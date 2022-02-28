@@ -120,7 +120,7 @@ fn get_color(hits: u32) -> v3f {
 
 
 
-fn random_z(id: u32) -> v2f { // does it really need id?
+fn random_z(id: u32) -> v2f {
     let r = v2f(
         hash_rng(id + bitcast<u32>(stuff.time + stuff.cursor_x)) - 0.5,
         hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)) - 0.5
@@ -144,8 +144,6 @@ fn reset_ele_at(id: u32) {
 }
 
 
-// figure out why the thing stalls after a few seconds, maybe try resetting just the compute buffer after a few seconds
-// stalling is confirmed. resetting the compute buffer works. but why!!!!!!
 fn mandlebrot_iterations(id: u32) {
     var ele = compute_buffer.buff[id];
     var z = ele.z;
@@ -232,7 +230,8 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     let index = u32(pos.x) + u32(pos.y)*1920u;
     var col = buf.buf[index];
 
-    if (stuff.mouse_middle == 1u) { // reset board by pressing mouse middle click
+    // reset board by pressing mouse middle click
+    if (stuff.mouse_middle == 1u) {
         buf.buf[index] = 0u;
         reset_ele_at(index);
     }
@@ -242,7 +241,8 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
         return v4f(0.8);
     }
 
-    if (stuff.mouse_left == 1u) { // color selected pixel
+    // color selected pixel
+    if (stuff.mouse_left == 1u) {
         // let i = u32(stuff.cursor_x) + u32(stuff.cursor_y)*1920u;
         let j = random_z(index);
         let i = get_screen_pos(j);
