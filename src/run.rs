@@ -10,6 +10,9 @@ use std::sync::mpsc::channel;
 
 use super::shader_importer;
 
+const RENDER_WIDTH: u32 = 1920;
+const RENDER_HEIGHT: u32 = 1080;
+
 struct State {
     surface: Option<wgpu::Surface>,
     config: Option<wgpu::SurfaceConfiguration>,
@@ -162,7 +165,7 @@ impl State {
     fn get_screen_buffer_couple<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
-            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920]),
+            contents: bytemuck::cast_slice(&vec![0u32 ; (RENDER_HEIGHT*RENDER_WIDTH) as usize]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
         buffer
@@ -274,8 +277,8 @@ impl State {
             self.config.as_mut().unwrap().height = new_size.height;
             self.surface.as_mut().unwrap().configure(&self.device, &self.config.as_ref().unwrap());
 
-            self.stuff.width = self.size.unwrap().width as f32;
-            self.stuff.height = self.size.unwrap().height as f32;    
+            self.stuff.display_width = self.size.unwrap().width;
+            self.stuff.display_height = self.size.unwrap().height;
         }
     }
 
@@ -564,8 +567,8 @@ pub fn render_to_image() {
     // https://sotrh.github.io/learn-wgpu/showcase/windowless/
     
     let mut state = pollster::block_on(State::new_windowless());
-    state.stuff.width = state.screen_texture_size.unwrap() as f32;
-    state.stuff.height = state.screen_texture_size.unwrap() as f32;
+    state.stuff.display_width = state.screen_texture_size.unwrap();
+    state.stuff.display_height = state.screen_texture_size.unwrap();
     state.update();
     pollster::block_on(state.render_windowless());
 }
@@ -680,8 +683,10 @@ const VERTICES: &[Vertex] = &[
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Stuff {
-    width: f32,
-    height: f32,
+    render_width: u32,
+    render_height: u32,
+    display_width: u32,
+    display_height: u32,
     time: f32,
     cursor_x: f32,
     cursor_y: f32,
@@ -697,8 +702,10 @@ struct Stuff {
 impl Stuff {
     fn new() -> Self {
         Self {
-            width: 100.0,
-            height: 100.0,
+            render_width: RENDER_WIDTH,
+            render_height: RENDER_HEIGHT,
+            display_width: 100,
+            display_height: 100,
             time: 0.0,
             cursor_x: 0.0,
             cursor_y: 0.0,

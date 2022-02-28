@@ -2,8 +2,10 @@
 // https://gpuweb.github.io/gpuweb/wgsl/#builtin-functions
 
 struct Stuff {
-    width: f32;
-    height: f32;
+    render_width: u32;
+    render_height: u32;
+    display_width: u32;
+    display_height: u32;
     time: f32;
     cursor_x: f32;
     cursor_y: f32;

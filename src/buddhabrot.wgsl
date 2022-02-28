@@ -1,6 +1,7 @@
 
 /// import ./src/rng.wgsl
 
+
 let min_iterations = 5000u;
 let max_iterations = 100000u;
 let ignore_n_starting_iterations = 5000u;
@@ -48,14 +49,14 @@ fn escape_func(z: v2f) -> bool {
 }
 
 fn get_screen_pos(c: v2f) -> u32 {
-    let scale = 1080.0/scale_factor;
+    let scale = f32(stuff.render_height)/scale_factor;
     var c = c - look_offset;
-    c = c*scale + v2f(1920.0/2.0, 1080.0/2.0);
+    c = c*scale + v2f(f32(stuff.render_width)/2.0, f32(stuff.render_height)/2.0);
     var index = vec2<i32>(i32(c.x), i32(c.y));
-    if (index.x < 0 || index.x >= 1920 || index.y < 0 || index.y >= 1080) {
+    if (index.x < 0 || index.x >= i32(stuff.render_width) || index.y < 0 || index.y >= i32(stuff.render_height)) {
         return 0u;
     }
-    return u32(index.x + index.y*1920);
+    return u32(index.x + index.y*i32(stuff.render_width));
 }
 
 fn get_color(hits: u32) -> v3f {
@@ -127,8 +128,8 @@ fn random_z(id: u32) -> v2f {
         );
     if (stuff.mouse_left == 1u) {
         // get this by inverting the get_screen_pos func
-        let scale = 1080.0/scale_factor;
-        let curs = (v2f(stuff.cursor_x, stuff.cursor_y) - v2f(1920.0/2.0, 1080.0/2.0))/scale + look_offset;
+        let scale = f32(stuff.display_height)/scale_factor;
+        let curs = (v2f(stuff.cursor_x, stuff.cursor_y) - v2f(f32(stuff.render_width*stuff.display_height/stuff.render_height)/2.0, f32(stuff.display_height)/2.0))/scale + look_offset;
         return curs + 0.09*r;
     }
     
@@ -227,7 +228,8 @@ fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_inv
 
 [[stage(fragment)]]
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
-    let index = u32(pos.x) + u32(pos.y)*1920u;
+    let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
+    let index = u32(pos.x*render_to_display_ratio) + u32(pos.y*render_to_display_ratio)*stuff.render_width;
     var col = buf.buf[index];
 
     // reset board by pressing mouse middle click
@@ -237,13 +239,12 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     }
 
     // show trajectory buffer
-    if (compute_buffer.buff[index].iter > min_iterations && stuff.mouse_right == 1u) {
+    if (compute_buffer.buff[u32(pos.x)+u32(pos.y)*stuff.display_width].iter > min_iterations && stuff.mouse_right == 1u) {
         return v4f(0.8);
     }
 
     // color selected pixel
     if (stuff.mouse_left == 1u) {
-        // let i = u32(stuff.cursor_x) + u32(stuff.cursor_y)*1920u;
         let j = random_z(index);
         let i = get_screen_pos(j);
         if (i == index) {

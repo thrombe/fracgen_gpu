@@ -134,22 +134,24 @@ fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
 
 [[stage(fragment)]]
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+    let width = f32(stuff.display_width);
+    let height = f32(stuff.display_height);
     let offset = vec2<f32>(0.0, 0.0);
     var scale = 15.0;
-    var side = min(stuff.width, stuff.height); // dynamic scaling
+    var side = min(width, height); // dynamic scaling
     // var side = 300.0; // static scale
 
 
-    var pos = vec2<f32>(pos.x/stuff.width, pos.y/stuff.height); // get pos from 0 to 1
+    var pos = vec2<f32>(pos.x/width, pos.y/height); // get pos from 0 to 1
     pos.y = 1.0-pos.y; // inverting y axis to get it upright
     pos = pos - vec2<f32>(0.5, 0.5); // (0, 0) at centre of screen
     pos = pos + offset;
-    pos = vec2<f32>(pos.x*stuff.width/side, pos.y*stuff.height/side);
+    pos = vec2<f32>(pos.x*width/side, pos.y*height/side);
     pos = pos * scale; // control scale
 
     // transform cursor the same as pos
-    var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
-    curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
+    var curs = v2f(stuff.cursor_x/width, 1.0-stuff.cursor_y/height) - v2f(0.5) + offset;
+    curs = v2f(curs.x*width/side, curs.y*height/side)*scale;
 
     // pos = floor(pos*1.0);
 
