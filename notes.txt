@@ -32,11 +32,30 @@ plan:
   . press button to pause time
   . handle errors properly
 
+path tracing:
+  . use ecs approach for gpu SVO renderer
+  . do glsl have u8?
+  . voxels only need 1 pointer_index (rest can be calculated by using the bit masks)
+  . to build this, take the existing SVO, traverse the all nth level node (starting from n=0) and put n+1
+    level voxels in the buffer + set pointer_index, then do same for n+1 th level voxels in next iteration
+  . this would be shit for dynamic scenes
+
+buddhabrot live-ish?:
+  . maintain a vector buffer of active trajectories and if the points go out of bounds, reset them with random values 
+    . how would "+c" work?
+      . maybe store this too?
+    . in fragment buffer, take the values out of the buffer and do the funny calc for color
+  . 1 vec*2+bool buffer for current pos
+    . bool for knowing if mandlebrot or buddhabrot
+  . do mandlebrot calc for newpoints first, to check if it escapes and do the buddhabrot if it escapes in 
+    the required iteration range
+  . only do a fixed number of iterations per frame
+  . 1 u32 buffer to record the hits
+  . also check if point in bulbs before mandlebrot
+
 gol:
+  . !!! small fast cycles damage the monitor. keep the speed slow
   . figure out how to retain last frame
-  . for each pixel, it looks around it by offsets of the cell side to decide if the color should be b or w
-  . this way, performance will only depend on the cell count
-  . no cpu needed/no buffers needed to store the cell/cell info
 
 plot:
   . 
@@ -46,5 +65,3 @@ particle life:
     . needs access to closeby particles quickly
     . need to define a aoe for forces around the current object
 
-buddhabrot live-ish?:
-  , 

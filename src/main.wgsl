@@ -21,13 +21,19 @@ type v3f = vec3<f32>;
 type v4f = vec4<f32>;
 
 
-struct Buffer {
+struct TrajectoryPoint {
+    z: v2f;
+    c: v2f;
+    iter: i32;
+};
+struct TrajectoryBuffer {
     // buff: [[stride(4)]] array<u32>; // stride is the length of the element in array in bytes
-    // buff: array<u32>;
-    buff: array<atomic<u32>>;
+    buff: array<TrajectoryPoint>;
 };
 [[group(0), binding(1)]]
-var<storage, read_write> compute_buffer: Buffer;
+var<storage, read_write> compute_buffer: TrajectoryBuffer;
+
+
 
 struct Buf {
     buf: array<u32>;
@@ -42,6 +48,6 @@ var<storage, read_write> buf2: Buf;
 // / import ./src/rng.wgsl
 
 /// import ./src/vertex.wgsl
-/// import ./src/fragment.wgsl
+// / import ./src/fragment.wgsl
 // / import ./src/gol_fragment.wgsl
-// / import ./src/compute.wgsl
+/// import ./src/compute.wgsl
