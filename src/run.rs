@@ -322,7 +322,7 @@ impl State {
             WindowEvent::MouseWheel {delta, ..} => {
                 match delta {
                     // winit::event::MouseScrollDelta::PixelDelta(pp) => self.stuff.scroll += (pp.y+pp.x) as f32,
-                    winit::event::MouseScrollDelta::LineDelta(x, y) => self.stuff.scroll += (x+y) as f32,
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => self.stuff.scroll += x+y,
                     _ => (),
                 }
             },

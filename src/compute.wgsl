@@ -59,24 +59,17 @@ fn get_screen_pos(c: v2f) -> u32 {
 
 fn get_color(hits: u32) -> v3f {
     var map_factor = log2(f32(max_iterations));
-    map_factor = map_factor*15.25;
-    let scale = 3.0;
+    map_factor = map_factor*17.25;
 
     let hits = sqrt(f32(hits)/map_factor);
     // let hits = log2(f32(hits)/map_factor);
     // let hits = f32(hits)/map_factor;
 
+    let hits = hits*(1.0+stuff.scroll/100.0);
+
     var color = v3f(hits);
     let version = 0;
     let color_method_mod_off = v3f(15.0, 48.0, 63.0)/255.0;
-    let color_vecs = array<v3f, 6>(
-            v3f(0.0, 0.0, 0.0),
-            v3f(200.0, 0.0, 200.0), // better visible in linear (1)
-            v3f(180.0, 30.0, 190.0),
-            v3f(140.0, 80.0, 190.0), // sqrt - (3)
-            v3f(80.0, 160.0, 255.0), // log - (4)
-            v3f(20.0, 235.0, 255.0),
-            );
 
     if (version == 0) { // overflow version
         color.x = hits;
@@ -86,28 +79,41 @@ fn get_color(hits: u32) -> v3f {
         color.x = f32(u32((hits + color_method_mod_off.x)*255.0)%255u)/255.0;
         color.y = f32((u32((hits + color_method_mod_off.y)*255.0)%511u)/2u)/255.0;
         color.z = f32((u32((hits + color_method_mod_off.z)*255.0)%1023u)/4u)/255.0;
-    // } else if (version == 2) { // lerp version
-    //     fn lerp_with_chop(a: v3f, b: v3f, t: f32) -> v3f {
-    //         if (t > 1.0) {return a;}
-    //         if (t < 0.0) {return b;}
-    //         return (a*t + b*(1.0-t));
-    //     }
-    //     var t = hits/255.0;
-    //     let intervals = arrayLength(color_vecs);
-    //     t = t*f32(intervals);
-    //     var index = u32(floor(t)); // gif
-    //     if (index < 1u) {index = 1u;}
-    //     if (index > intervals) {index = intervals;}
-    //     color = lerp_with_chop(color_vecs[index], color_vecs[index - 1], floor(t)); // lerping
-    //     // color = smoothStep(color_vecs[index], color_vecs[index - 1], floor(t)); // lerping
+    } else if (version == 2) { // lerp version
+        // why can't it be done with a vector + dynamic indexing?
+        var t = hits;
+        var intervals = 5;
+        t = t*f32(intervals);
+        var index = i32(floor(t));
+        t = fract(t);
+        let v1 = v3f(0.5, 0.1, 0.3);
+        let v2 = v3f(0.9, 0.3, 0.4);
+        let v3 = v3f(0.4, 0.9, 0.8);
+        let v4 = v3f(0.2, 0.4, 0.6);
+        let v5 = v3f(0.2, 0.4, 0.2);
+        let v6 = v3f(0.0, 0.0, 0.0);
+        if (index <= 0) {
+            color = v3f(0.0);
+        } else if (index == 1) {
+            color = v2*t + (1.0-t)*v1;
+        } else if (index == 2) {
+            color = v3*t + (1.0-t)*v2;
+        } else if (index == 3) {
+            color = v4*t + (1.0-t)*v3;
+        } else if (index == 4) {
+            color = v5*t + (1.0-t)*v4;
+        } else if (index == 5) {
+            color = v6*t + (1.0-t)*v5;
+        } else if (index > 5) {
+            color = v6;
+        }
+        // if (t > 0.6) {return v3f(1.0);}
     }
 
-    color = color/scale;
-
-    // return color;
+    return color;
     // return color.rbg;
     // return color.gbr;
-    return color.brg;
+    // return color.brg;
 }
 
 
