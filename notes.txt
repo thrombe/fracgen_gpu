@@ -38,3 +38,6 @@ buddhabrot:
   . only do a fixed number of iterations per frame
   . 1 u32 buffer to record the hits
   . also check if point in bulbs before mandlebrot
+
+plot:
+  . 
