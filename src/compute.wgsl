@@ -9,6 +9,7 @@ let limit_new_points_to_cursor = false;
 let mandlebrot_early_bailout = false;
 
 let scale_factor = 2.0;
+let look_offset = v2f(-0.25, 0.0);
 
 let julia = false;
 let j = v2f(-0.74571890570893210, -0.11624642707064532);
@@ -47,8 +48,10 @@ fn escape_func(z: v2f) -> bool {
 
 fn get_screen_pos(c: v2f) -> u32 {
     let scale = 1080.0/scale_factor;
-    var index = vec2<i32>(i32((c.x+2.0+(0.25)*scale_factor)*scale), i32((c.y+0.5*scale_factor)*scale));
-    if (index.x < 0 || index.x > 1920 || index.y < 0 || index.y > 1080) {
+    var c = c - look_offset;
+    c = c*scale + v2f(1920.0/2.0, 1080.0/2.0);
+    var index = vec2<i32>(i32(c.x), i32(c.y));
+    if (index.x < 0 || index.x >= 1920 || index.y < 0 || index.y >= 1080) {
         return 0u;
     }
     return u32(index.x + index.y*1920);
@@ -110,18 +113,19 @@ fn get_color(hits: u32) -> v3f {
 
 
 fn random_z(id: u32) -> v2f { // does it really need id?
+    let r = v2f(
+        sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5,
+        sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5
+        );
     if (stuff.mouse_left == 1u) {
+        // get this by inverting the get_screen_pos func
         let scale = 1080.0/scale_factor;
-        return v2f( // get the non-random part of this by inverting the get_screen_pos func
-            (stuff.cursor_x/scale - scale_factor*0.25) - 2.0 + 0.125*(sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5),
-            (stuff.cursor_y/scale - scale_factor*0.5) + 0.125*(sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5)
-            );
+        let curs = (v2f(stuff.cursor_x, stuff.cursor_y) - v2f(1920.0/2.0, 1080.0/2.0))/scale + look_offset;
+        return curs + 0.09*r;
     }
     
-    return v2f( // both should be in range -2 to 2
-        sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x))*4.0 - 2.0,
-        sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y))*4.0 - 2.0
-        );
+    // both should be in range -2 to 2
+    return r*4.0;
 }
 
 fn reset_ele_at(id: u32) {
