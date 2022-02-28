@@ -1,16 +1,44 @@
 
 /// import ./src/rng.wgsl
 
-let min_iterations = 10000u;
+let min_iterations = 5000u;
 let max_iterations = 100000u;
-let ignore_n_iterations = 5000u;
+let ignore_n_starting_iterations = 5000u;
+let ignore_n_ending_iterations = 0u;
 let limit_new_points_to_cursor = false;
-// let limit_new_points_to_cursor = true;
+let mandlebrot_early_bailout = false;
 
-let max_iterations_per_frame = 1024; // think before touching this!!
+let scale_factor = 2.0;
+
+let julia = false;
+let j = v2f(-0.74571890570893210, -0.11624642707064532);
+let e_to_ix = false;
+
+// think before touching these!!
+let chill_compute = false; // skip compute, just return
+// let max_iterations_per_frame = 512;
+let max_iterations_per_frame = 1536;
 
 fn f(z: v2f, c: v2f) -> v2f {
-    return v2f(z.x*z.x-z.y*z.y + c.x, 2.0*z.x*z.y + c.y);
+    var k = v2f(0.0);
+    if (e_to_ix) {
+        let p = 3.0;
+        // convert to r*e^(i*theta)
+        let r = sqrt(z.x*z.x+z.y*z.y);
+        let t = atan2(z.y, z.x);
+        // raise to pth power and convert back to x + i*y
+        let r = pow(r, p);
+        let t = p*t;
+        k = v2f(r*cos(t), r*sin(t));
+    } else {
+        k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
+    }
+
+    if (julia) {
+        return k + j;
+    } else {
+        return k + c;
+    }
 }
 
 fn escape_func(z: v2f) -> bool {
@@ -18,9 +46,8 @@ fn escape_func(z: v2f) -> bool {
 }
 
 fn get_screen_pos(c: v2f) -> u32 {
-    let factor = 2.0;
-    let scale = 1080.0/factor;
-    var index = vec2<i32>(i32((c.x+2.0+(0.25)*factor)*scale), i32((c.y+0.5*factor)*scale));
+    let scale = 1080.0/scale_factor;
+    var index = vec2<i32>(i32((c.x+2.0+(0.25)*scale_factor)*scale), i32((c.y+0.5*scale_factor)*scale));
     if (index.x < 0 || index.x > 1920 || index.y < 0 || index.y > 1080) {
         return 0u;
     }
@@ -84,17 +111,14 @@ fn get_color(hits: u32) -> v3f {
 
 fn random_z(id: u32) -> v2f { // does it really need id?
     if (stuff.mouse_left == 1u) {
-        let factor = 2.0;
-        let scale = 1080.0/factor;
+        let scale = 1080.0/scale_factor;
         return v2f( // get the non-random part of this by inverting the get_screen_pos func
-            (stuff.cursor_x/scale - factor*0.25) - 2.0 + 0.125*(sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5),
-            (stuff.cursor_y/scale - factor*0.5) + 0.125*(sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5)
+            (stuff.cursor_x/scale - scale_factor*0.25) - 2.0 + 0.125*(sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5),
+            (stuff.cursor_y/scale - scale_factor*0.5) + 0.125*(sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5)
             );
-    } else if (limit_new_points_to_cursor) {
-        return v2f(0.0);
     }
     
-    return v2f(
+    return v2f( // both should be in range -2 to 2
         sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x))*4.0 - 2.0,
         sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y))*4.0 - 2.0
         );
@@ -115,7 +139,7 @@ fn mandlebrot_iterations(id: u32) {
     var z = ele.z;
     let c = ele.c;
 
-    if (ele.iter == 0u) {
+    if (ele.iter == 0u && mandlebrot_early_bailout && !julia && !e_to_ix) {
         let x = c.x - 0.25;
         let q = x*x + c.y*c.y;
         if (((q + x/2.0)*(q + x/2.0)-q/4.0 < 0.0) || (q - 0.0625 < 0.0)) {
@@ -149,7 +173,6 @@ fn mandlebrot_iterations(id: u32) {
 
     ele.z = z;
     compute_buffer.buff[id] = ele;
-    
 }
 
 fn buddhabrot_iterations(id: u32) {
@@ -159,13 +182,13 @@ fn buddhabrot_iterations(id: u32) {
 
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
-        if (escape_func(z)) {
+        if (escape_func(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
             reset_ele_at(id);
             return;
         } else {
             ele.iter = ele.iter + 1u;
             let index = get_screen_pos(z);
-            if (index != 0u && ele.iter > ignore_n_iterations) {
+            if (index != 0u && ele.iter > ignore_n_starting_iterations) {
                 buf1.buf[index] = buf1.buf[index] + 1u; // maybe make this atomic
             }
         }
@@ -181,12 +204,9 @@ fn buddhabrot_iterations(id: u32) {
 /// compute_enable
 [[stage(compute), workgroup_size(64)]] // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn
 fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_invocation_id = local_invocation_id*work_group_id
+    if (chill_compute) {return;}
+    if (limit_new_points_to_cursor && stuff.mouse_left != 1u) {return;}
     let ele = compute_buffer.buff[id.x];
-
-    // if (stuff.mouse_middle == 1u) {
-    //     reset_ele_at(id.x);
-    //     return;
-    // }
 
     if (ele.b == 0u) {
         mandlebrot_iterations(id.x);
