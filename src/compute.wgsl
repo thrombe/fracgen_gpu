@@ -114,8 +114,8 @@ fn get_color(hits: u32) -> v3f {
 
 fn random_z(id: u32) -> v2f { // does it really need id?
     let r = v2f(
-        sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5,
-        sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5
+        hash_rng(id + bitcast<u32>(stuff.time + stuff.cursor_x)) - 0.5,
+        hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)) - 0.5
         );
     if (stuff.mouse_left == 1u) {
         // get this by inverting the get_screen_pos func

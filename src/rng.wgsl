@@ -61,21 +61,28 @@ fn gold_noise(st: v2f) -> v3f {
 }
 
 // Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf
-// fn hash(state: u32) -> u32 {
-//     var state = state;
-//     state = state^2747636419u;
-//     state = state*2654435769u;
-//     state = state^(state >> 16);
-//     state = state*2654435769u;
-//     state = state^(state >> 16);
-//     state = state*2654435769u;
-//     return state;
-// }
+fn hash(state: u32) -> u32 {
+    var state = state;
+    state = state^2747636419u;
+    state = state*2654435769u;
+    state = state^(state >> 16u);
+    state = state*2654435769u;
+    state = state^(state >> 16u);
+    state = state*2654435769u;
+    return state;
+}
 
-// fn hash_rng(x: f32, y: f32) -> f32 {
-//     let k = 1103515245;
-//     let ex = 
-// }
+fn hash_rng(m: u32) -> f32 {
+    var m = hash(m);
+    let ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    let ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m = m & ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m = m | ieeeOne;                          // Add fractional part to 1.0
+
+    let f = bitcast<f32>(m);       // Range [1:2]
+    return f - 1.0;
+}
 
 //////////////////////////////
 
