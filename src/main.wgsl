@@ -48,4 +48,4 @@ var<storage, read_write> buf: Buf;
 // / import ./src/rng.wgsl
 
 /// import ./src/vertex.wgsl
-/// import ./src/compute.wgsl
+/// import ./src/buddhabrot.wgsl

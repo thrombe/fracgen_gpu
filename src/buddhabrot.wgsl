@@ -17,8 +17,9 @@ let e_to_ix = false;
 
 // think before touching these!!
 let chill_compute = false; // skip compute, just return
+let max_iterations_per_frame = 256;
 // let max_iterations_per_frame = 512;
-let max_iterations_per_frame = 1536;
+// let max_iterations_per_frame = 1536;
 
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
@@ -86,6 +87,7 @@ fn get_color(hits: u32) -> v3f {
         t = t*f32(intervals);
         var index = i32(floor(t));
         t = fract(t);
+        let v0 = v3f(0.0, 0.0, 0.0); // background
         let v1 = v3f(0.5, 0.1, 0.3);
         let v2 = v3f(0.9, 0.3, 0.4);
         let v3 = v3f(0.4, 0.9, 0.8);
@@ -93,7 +95,7 @@ fn get_color(hits: u32) -> v3f {
         let v5 = v3f(0.2, 0.4, 0.2);
         let v6 = v3f(0.0, 0.0, 0.0);
         if (index <= 0) {
-            color = v3f(0.0);
+            color = v0;
         } else if (index == 1) {
             color = v2*t + (1.0-t)*v1;
         } else if (index == 2) {
