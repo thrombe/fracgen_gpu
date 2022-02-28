@@ -42,15 +42,10 @@ struct Buf {
     buf: array<u32>;
 };
 [[group(0), binding(2)]]
-var<storage, read_write> buf1: Buf;
-
-[[group(0), binding(3)]]
-var<storage, read_write> buf2: Buf;
+var<storage, read_write> buf: Buf;
 
 
 // / import ./src/rng.wgsl
 
 /// import ./src/vertex.wgsl
-// / import ./src/fragment.wgsl
-// / import ./src/gol_fragment.wgsl
 /// import ./src/compute.wgsl

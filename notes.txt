@@ -19,28 +19,14 @@ bugs:
   . 
 
 plan:
-  . allow to change the size in windowless mode
-  . try hybrid + gpustuff
-    . maybe the power mode thing can help?
-  . check the rust-cuda ray-tracer for how it does things
-  . show red/white screen if shader dont compile
   /. send mouse coords in shader so that it can be used for fun things
     . using it as sliders for variables
   . how anti-aliasing
   . how do i check fps?
   . can i dump gifs
-  . press button to pause time
   . handle errors properly
 
-path tracing:
-  . use ecs approach for gpu SVO renderer
-  . do glsl have u8?
-  . voxels only need 1 pointer_index (rest can be calculated by using the bit masks)
-  . to build this, take the existing SVO, traverse the all nth level node (starting from n=0) and put n+1
-    level voxels in the buffer + set pointer_index, then do same for n+1 th level voxels in next iteration
-  . this would be shit for dynamic scenes
-
-buddhabrot live-ish?:
+buddhabrot:
   . maintain a vector buffer of active trajectories and if the points go out of bounds, reset them with random values 
     . how would "+c" work?
       . maybe store this too?
@@ -52,16 +38,3 @@ buddhabrot live-ish?:
   . only do a fixed number of iterations per frame
   . 1 u32 buffer to record the hits
   . also check if point in bulbs before mandlebrot
-
-gol:
-  . !!! small fast cycles damage the monitor. keep the speed slow
-  . figure out how to retain last frame
-
-plot:
-  . 
-
-particle life:
-  . how do i represent this efficiently
-    . needs access to closeby particles quickly
-    . need to define a aoe for forces around the current object
-

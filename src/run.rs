@@ -20,9 +20,7 @@ struct State {
     screen_texture_desc: Option<wgpu::TextureDescriptor<'static>>,
     screen_texture_view: Option<wgpu::TextureView>,
 
-    my_turn: bool,
-    screen_buffer1: wgpu::Buffer,
-    screen_buffer2: wgpu::Buffer,
+    screen_buffer: wgpu::Buffer,
 
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -43,7 +41,6 @@ struct State {
     bind_group_layouts: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
     time: std::time::Instant,
-    tick_time: f32,
 }
 
 impl State {
@@ -81,9 +78,9 @@ impl State {
         };
         surface.configure(&device, &config);
         
-        let (screen_buffer1, screen_buffer2) = Self::get_screen_buffer_couple(&device);
+        let screen_buffer= Self::get_screen_buffer_couple(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer1, &screen_buffer2);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer);
         let vertex_buffer = Self::get_vertex_buffer(&device);
 
 
@@ -94,9 +91,9 @@ impl State {
             importer: shader_importer::Importer::new("./src/main.wgsl"),
             compile_status: false,
             shader_code: None,
-            time: std::time::Instant::now(), tick_time: 0.0,
+            time: std::time::Instant::now(),
             screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
-            screen_buffer1, screen_buffer2, my_turn: false,
+            screen_buffer,
         };
         state.compile();
         state
@@ -121,9 +118,9 @@ impl State {
 
         let (texture_size, texture_desc, texture, texture_view) = Self::get_screen_texture(&device);
         let vertex_buffer = Self::get_vertex_buffer(&device);
-        let (screen_buffer1, screen_buffer2) = Self::get_screen_buffer_couple(&device);
+        let screen_buffer = Self::get_screen_buffer_couple(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer1, &screen_buffer2);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer);
         
         let mut state = Self {
             surface: None, size: None, device, queue, config: None, render_pipeline: None, compute_pipeline: None, work_group_count: 1,
@@ -132,9 +129,9 @@ impl State {
             importer: shader_importer::Importer::new("./src/main.wgsl"),
             compile_status: false,
             shader_code: None,
-            time: std::time::Instant::now(), tick_time: 0.0,
+            time: std::time::Instant::now(),
             screen_texture: Some(texture), screen_texture_size: Some(texture_size), screen_texture_desc: Some(texture_desc), screen_texture_view: Some(texture_view),
-            screen_buffer1, screen_buffer2, my_turn: false,
+            screen_buffer,
         };
         state.compile(); // fallback shader
         state.compile();
@@ -162,18 +159,13 @@ impl State {
         (texture_size, texture_desc, texture, texture_view)
     }
     
-    fn get_screen_buffer_couple<'a, 'b>(device: &'a wgpu::Device) -> (wgpu::Buffer, wgpu::Buffer) {
-        let buffer1 = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    fn get_screen_buffer_couple<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
-        let buffer2 = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("screen Buffer 2")),
-            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920]),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
-        (buffer1, buffer2)
+        buffer
     }
 
     fn get_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
@@ -187,7 +179,7 @@ impl State {
         vertex_buffer
     }
 
-    fn get_bind_group(device: &wgpu::Device, buff1: &wgpu::Buffer, buff2: &wgpu::Buffer) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
+    fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1+1)]),
@@ -226,17 +218,7 @@ impl State {
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
-                    binding: 2, // screen_buffer1
-                    visibility: wgpu::ShaderStages::COMPUTE | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3, // screen_buffer2
+                    binding: 2, // screen_buffer
                     visibility: wgpu::ShaderStages::COMPUTE | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -261,11 +243,7 @@ impl State {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: buff1.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: buff2.as_entire_binding(),
+                    resource: buff.as_entire_binding(),
                 },
             ],
         });
@@ -335,34 +313,6 @@ impl State {
         self.stuff.time = self.time.elapsed().as_secs_f32();
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
-
-        if self.time.elapsed().as_secs_f32() - self.tick_time > 0.1 {
-            self.tick_time = self.time.elapsed().as_secs_f32();
-            // self.my_turn = !self.my_turn; // disabled for buddhabrot
-            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("stuff bind group"),
-                layout: &self.bind_group_layouts,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.stuff_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.compute_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: if self.my_turn {2} else {3},
-                        resource: self.screen_buffer1.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: if self.my_turn {3} else {2},
-                        resource: self.screen_buffer2.as_entire_binding(),
-                    },
-                ],
-            });
-            self.bind_group = bind_group;
-        }
 
         self.compile();
     }

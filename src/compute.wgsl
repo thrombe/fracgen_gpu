@@ -165,7 +165,7 @@ fn mandlebrot_iterations(id: u32) {
             if (ele.iter > min_iterations && ele.iter < max_iterations) {
                 if (false) {
                     let index = get_screen_pos(c);
-                    buf1.buf[index] = 1u;
+                    buf.buf[index] = 1u;
                     ele.iter = 0u;
                 } else {
                     ele.iter = 0u;
@@ -199,7 +199,7 @@ fn buddhabrot_iterations(id: u32) {
             ele.iter = ele.iter + 1u;
             let index = get_screen_pos(z);
             if (index != 0u && ele.iter > ignore_n_starting_iterations) {
-                buf1.buf[index] = buf1.buf[index] + 1u; // maybe make this atomic
+                buf.buf[index] = buf.buf[index] + 1u; // maybe make this atomic
             }
         }
     }
@@ -228,10 +228,10 @@ fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_inv
 [[stage(fragment)]]
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     let index = u32(pos.x) + u32(pos.y)*1920u;
-    var col = buf1.buf[index];
+    var col = buf.buf[index];
 
     if (stuff.mouse_middle == 1u) { // reset board by pressing mouse middle click
-        buf1.buf[index] = 0u;
+        buf.buf[index] = 0u;
         reset_ele_at(index);
     }
 
