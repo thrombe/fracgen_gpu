@@ -1,7 +1,7 @@
 
 
-fn sin_rng(x: f32, y: f32) -> f32 {
-    var f = sin(dot(v2f(x, y), v2f(12.9898,78.233)))*43758.5453123;
+fn sin_rng(st: v2f) -> f32 {
+    var f = sin(dot(st, v2f(12.9898,78.233)))*43758.5453123;
     // var f = (sin(x*y+y*y + 32.0*x)+sin(y+x))*100.0;
     // f = f + stuff.time * 1.0;
     f = fract(f);
@@ -39,9 +39,9 @@ fn sin_rng2(st: v2f) -> v2f {
               dot(st,v2f(269.5,183.3)) );
     return -1.0 + 2.0*fract(sin(st)*43758.5453123);
 }
-fn perlin_noise(x: f32, y: f32) -> v3f {
-    var i = floor(v2f(x, y));
-    var f = fract(v2f(x, y));
+fn perlin_noise(st: v2f) -> v3f {
+    var i = floor(st);
+    var f = fract(st);
 
     var u = f*f*(3.0- 2.0*f);
 
@@ -55,10 +55,9 @@ fn perlin_noise(x: f32, y: f32) -> v3f {
                + 0.2);
 }
 
-fn gold_noise(x: f32, y: f32) -> v3f {
+fn gold_noise(st: v2f) -> v3f {
     let seed = 10.0;
-    let xy = v2f(x, y);
-    return v3f(fract(tan(distance(xy*PHI, xy)*seed)*xy.x));
+    return v3f(fract(tan(distance(st*PHI, st)*seed)*st.x));
 }
 
 // Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf

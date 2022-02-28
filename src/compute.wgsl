@@ -1,9 +1,11 @@
 
 /// import ./src/rng.wgsl
 
-let min_iterations = 100000000u;
-let max_iterations = 1000000000u;
+let min_iterations = 10000u;
+let max_iterations = 100000u;
 let ignore_n_iterations = 5000u;
+let limit_new_points_to_cursor = false;
+// let limit_new_points_to_cursor = true;
 
 let max_iterations_per_frame = 1024; // think before touching this!!
 
@@ -28,6 +30,7 @@ fn get_screen_pos(c: v2f) -> u32 {
 fn get_color(hits: u32) -> v3f {
     var map_factor = log2(f32(max_iterations));
     map_factor = map_factor*15.25;
+    let scale = 3.0;
 
     let hits = sqrt(f32(hits)/map_factor);
     // let hits = log2(f32(hits)/map_factor);
@@ -69,6 +72,8 @@ fn get_color(hits: u32) -> v3f {
     //     // color = smoothStep(color_vecs[index], color_vecs[index - 1], floor(t)); // lerping
     }
 
+    color = color/scale;
+
     // return color;
     // return color.rbg;
     // return color.gbr;
@@ -78,9 +83,20 @@ fn get_color(hits: u32) -> v3f {
 
 
 fn random_z(id: u32) -> v2f { // does it really need id?
+    if (stuff.mouse_left == 1u) {
+        let factor = 2.0;
+        let scale = 1080.0/factor;
+        return v2f( // get the non-random part of this by inverting the get_screen_pos func
+            (stuff.cursor_x/scale - factor*0.25) - 2.0 + 0.125*(sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x)) - 0.5),
+            (stuff.cursor_y/scale - factor*0.5) + 0.125*(sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y)) - 0.5)
+            );
+    } else if (limit_new_points_to_cursor) {
+        return v2f(0.0);
+    }
+    
     return v2f(
-        sin_rng(f32(id), stuff.time)*4.0 - 2.0,
-        sin_rng(f32(id)*PHI, stuff.time*PI*0.1)*4.0 - 2.0
+        sin_rng(v2f(f32(id), stuff.time + stuff.cursor_x))*4.0 - 2.0,
+        sin_rng(v2f(f32(id)*PHI, stuff.time*PI*0.1 + stuff.cursor_y))*4.0 - 2.0
         );
 }
 
@@ -91,6 +107,9 @@ fn reset_ele_at(id: u32) {
     compute_buffer.buff[id].z = compute_buffer.buff[id].c;
 }
 
+
+// figure out why the thing stalls after a few seconds, maybe try resetting just the compute buffer after a few seconds
+// stalling is confirmed. resetting the compute buffer works. but why!!!!!!
 fn mandlebrot_iterations(id: u32) {
     var ele = compute_buffer.buff[id];
     var z = ele.z;
@@ -107,8 +126,9 @@ fn mandlebrot_iterations(id: u32) {
 
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
+        ele.iter = ele.iter + 1u;
         if (escape_func(z)) {
-            if (ele.iter > min_iterations || ele.iter < max_iterations) {
+            if (ele.iter > min_iterations && ele.iter < max_iterations) {
                 if (false) {
                     let index = get_screen_pos(c);
                     buf1.buf[index] = 1u;
@@ -121,15 +141,15 @@ fn mandlebrot_iterations(id: u32) {
                 break;
             }
         }
-        ele.iter = ele.iter + 1u;
+        if (ele.iter > max_iterations) {
+            reset_ele_at(id);
+            return;
+        }
     }
 
-    if (ele.iter > max_iterations) {
-        reset_ele_at(id);
-    } else {
-        ele.z = z;
-        compute_buffer.buff[id] = ele;
-    }
+    ele.z = z;
+    compute_buffer.buff[id] = ele;
+    
 }
 
 fn buddhabrot_iterations(id: u32) {
@@ -179,9 +199,24 @@ fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_inv
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     let index = u32(pos.x) + u32(pos.y)*1920u;
     var col = buf1.buf[index];
+
     if (stuff.mouse_middle == 1u) { // reset board by pressing mouse middle click
         buf1.buf[index] = 0u;
         reset_ele_at(index);
+    }
+
+    // show trajectory buffer
+    if (compute_buffer.buff[index].iter > min_iterations && stuff.mouse_right == 1u) {
+        return v4f(0.8);
+    }
+
+    if (stuff.mouse_left == 1u) { // color selected pixel
+        // let i = u32(stuff.cursor_x) + u32(stuff.cursor_y)*1920u;
+        let j = random_z(index);
+        let i = get_screen_pos(j);
+        if (i == index) {
+            return v4f(1.0);
+        }
     }
 
     var col = get_color(col);
