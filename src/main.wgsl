@@ -1,4 +1,6 @@
 
+// https://gpuweb.github.io/gpuweb/wgsl/#builtin-functions
+
 struct Stuff {
     width: f32;
     height: f32;
@@ -24,7 +26,8 @@ type v4f = vec4<f32>;
 struct TrajectoryPoint {
     z: v2f;
     c: v2f;
-    iter: i32;
+    iter: u32;
+    b: u32;
 };
 struct TrajectoryBuffer {
     // buff: [[stride(4)]] array<u32>; // stride is the length of the element in array in bytes

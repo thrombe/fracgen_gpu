@@ -190,7 +190,7 @@ impl State {
     fn get_bind_group(device: &wgpu::Device, buff1: &wgpu::Buffer, buff2: &wgpu::Buffer) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
-            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1)]),
+            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1+1)]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
