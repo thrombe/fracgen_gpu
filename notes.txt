@@ -1,0 +1,50 @@
+
+resources:
+  . https://www.khronos.org/opengl/wiki/Compute_Shader
+  . https://www.w3.org/TR/WGSL/
+  . https://sotrh.github.io/learn-wgpu
+
+  . for wgpu on browser
+    . https://github.com/sotrh/learn-wgpu/tree/master/code/showcase/pong
+    . https://sotrh.github.io/learn-wgpu/showcase/pong/
+    . look for wasm examples in wgpu
+
+custom commands:
+  . /// import ./shader_path
+    . keep track of what files included and dont import files multiple times
+  . /// compute_enable
+  . /// work_group_count 64
+
+bugs:
+  . 
+
+plan:
+  . allow to change the size in windowless mode
+  . try hybrid + gpustuff
+    . maybe the power mode thing can help?
+  . check the rust-cuda ray-tracer for how it does things
+  . show red/white screen if shader dont compile
+  /. send mouse coords in shader so that it can be used for fun things
+    . using it as sliders for variables
+  . how anti-aliasing
+  . how do i check fps?
+  . can i dump gifs
+  . press button to pause time
+  . handle errors properly
+
+gol:
+  . figure out how to retain last frame
+  . for each pixel, it looks around it by offsets of the cell side to decide if the color should be b or w
+  . this way, performance will only depend on the cell count
+  . no cpu needed/no buffers needed to store the cell/cell info
+
+plot:
+  . 
+
+particle life:
+  . how do i represent this efficiently
+    . needs access to closeby particles quickly
+    . need to define a aoe for forces around the current object
+
+buddhabrot live-ish?:
+  , 
