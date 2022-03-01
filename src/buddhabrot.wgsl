@@ -129,7 +129,7 @@ fn random_z(id: u32) -> v2f {
     if (stuff.mouse_left == 1u) {
         // get this by inverting the get_screen_pos func
         let scale = f32(stuff.display_height)/scale_factor;
-        let curs = (v2f(stuff.cursor_x, stuff.cursor_y) - v2f(f32(stuff.render_width*stuff.display_height/stuff.render_height)/2.0, f32(stuff.display_height)/2.0))/scale + look_offset;
+        let curs = (v2f(stuff.cursor_x, stuff.cursor_y) - v2f((f32(stuff.render_width*stuff.display_height)/f32(stuff.render_height))/2.0, f32(stuff.display_height)/2.0))/scale + look_offset;
         return curs + 0.09*r;
     }
     
@@ -232,14 +232,17 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     let index = u32(pos.x*render_to_display_ratio) + u32(pos.y*render_to_display_ratio)*stuff.render_width;
     var col = buf.buf[index];
 
+    let compute_buffer_size = 1920u*1080u;
+
     // reset board by pressing mouse middle click
-    if (stuff.mouse_middle == 1u) {
-        buf.buf[index] = 0u;
+    if (stuff.mouse_middle == 1u && index < compute_buffer_size) {
+        // buf.buf[index] = 0u;
         reset_ele_at(index);
     }
 
     // show trajectory buffer
-    if (compute_buffer.buff[u32(pos.x)+u32(pos.y)*stuff.display_width].iter > min_iterations && stuff.mouse_right == 1u) {
+    let i2 = u32(pos.x)+u32(pos.y)*stuff.display_width;
+    if (stuff.mouse_right == 1u && i2 < compute_buffer_size && compute_buffer.buff[i2].iter > min_iterations) {
         return v4f(0.8);
     }
 
@@ -253,5 +256,5 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     }
 
     var col = get_color(col);
-    return v4f(col, 1.0); // gamma correction ruines stuff 
+    return v4f(col, 1.0);
 }

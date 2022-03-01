@@ -10,8 +10,9 @@ use std::sync::mpsc::channel;
 
 use super::shader_importer;
 
-const RENDER_WIDTH: u32 = 1920;
-const RENDER_HEIGHT: u32 = 1080;
+const M: u32 = 1;
+const RENDER_WIDTH: u32 = 1920*M;
+const RENDER_HEIGHT: u32 = 1080*M;
 
 struct State {
     surface: Option<wgpu::Surface>,
@@ -19,7 +20,7 @@ struct State {
     size: Option<winit::dpi::PhysicalSize<u32>>,
 
     screen_texture: Option<wgpu::Texture>,
-    screen_texture_size: Option<u32>,
+    screen_texture_size: Option<(u32, u32)>,
     screen_texture_desc: Option<wgpu::TextureDescriptor<'static>>,
     screen_texture_view: Option<wgpu::TextureView>,
 
@@ -81,9 +82,9 @@ impl State {
         };
         surface.configure(&device, &config);
         
-        let screen_buffer= Self::get_screen_buffer_couple(&device);
+        let screen_buffer= Self::get_screen_buffer(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new());
         let vertex_buffer = Self::get_vertex_buffer(&device);
 
 
@@ -121,9 +122,9 @@ impl State {
 
         let (texture_size, texture_desc, texture, texture_view) = Self::get_screen_texture(&device);
         let vertex_buffer = Self::get_vertex_buffer(&device);
-        let screen_buffer = Self::get_screen_buffer_couple(&device);
+        let screen_buffer = Self::get_screen_buffer(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new());
         
         let mut state = Self {
             surface: None, size: None, device, queue, config: None, render_pipeline: None, compute_pipeline: None, work_group_count: 1,
@@ -142,12 +143,12 @@ impl State {
     }
     
     
-    fn get_screen_texture<'a, 'b>(device: &'a wgpu::Device) -> (u32, wgpu::TextureDescriptor<'b>, wgpu::Texture, wgpu::TextureView) {
-        let texture_size = 1024u32; // should be a multiple of 256
+    fn get_screen_texture<'a, 'b>(device: &'a wgpu::Device) -> ((u32, u32), wgpu::TextureDescriptor<'b>, wgpu::Texture, wgpu::TextureView) {
+        let texture_size = (RENDER_WIDTH, RENDER_HEIGHT);
         let texture_desc = wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
-                width: texture_size,
-                height: texture_size,
+                width: texture_size.0,
+                height: texture_size.1,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -162,11 +163,11 @@ impl State {
         (texture_size, texture_desc, texture, texture_view)
     }
     
-    fn get_screen_buffer_couple<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
+    fn get_screen_buffer<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; (RENDER_HEIGHT*RENDER_WIDTH) as usize]),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         });
         buffer
     }
@@ -182,7 +183,7 @@ impl State {
         vertex_buffer
     }
 
-    fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
+    fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer, stuff: &Stuff) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1+1)]),
@@ -192,7 +193,7 @@ impl State {
         let stuff_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("stuff buffer"),
-                contents: bytemuck::cast_slice(&[Stuff::new()]),
+                contents: bytemuck::cast_slice(&[*stuff]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }
         );
@@ -254,6 +255,56 @@ impl State {
         (bind_group, bind_group_layouts, stuff_buffer, compute_buffer)
     }
 
+    fn reset_buffers(&mut self) {
+        self.screen_buffer = Self::get_screen_buffer(&self.device);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&self.device, &self.screen_buffer, &self.stuff);
+        self.bind_group = bind_group;
+        self.bind_group_layouts = bind_group_layouts;
+        self.compute_buffer = compute_buffer;
+        self.stuff_buffer = stuff_buffer;
+    }
+
+    fn dump_render(&self) {
+        dbg!("dumping image");
+        // let (texture_size, texture_desc, texture, texture_view) = State::get_screen_texture(&self.device);
+        // self.screen_texture_size = Some(texture_size);
+        // self.screen_texture_desc = Some(texture_desc);
+        // self.screen_texture_view = Some(texture_view);
+        // self.screen_texture = Some(texture);
+        // pollster::block_on(self.render_windowless());
+
+        let mut state = pollster::block_on(State::new_windowless());
+        let buffer_slice = self.screen_buffer.slice(..);
+
+        let buffer_data = {
+            // NOTE: We have to create the mapping THEN device.poll() before await
+            // the future. Otherwise the application will freeze.
+            let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
+            self.device.poll(wgpu::Maintain::Wait);
+            pollster::block_on(async {mapping.await.unwrap()});
+            
+            let data = buffer_slice.get_mapped_range().iter().map(|r| *r).collect::<Vec<u8>>();
+            self.screen_buffer.unmap();
+            data
+        };                 
+        state.screen_buffer = state.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("screen Buffer")),
+            contents: bytemuck::cast_slice(&buffer_data),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+        state.stuff = self.stuff.clone();
+        state.stuff.display_height = state.stuff.render_height;
+        state.stuff.display_width = state.stuff.render_width;
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&state.device, &state.screen_buffer, &state.stuff);
+        state.bind_group = bind_group;
+        state.bind_group_layouts = bind_group_layouts;
+        state.stuff_buffer = stuff_buffer;
+        state.compute_buffer = compute_buffer;
+        state.importer.compute = false;
+        dbg!("rendering windowless");
+        pollster::block_on(state.render_windowless());
+    }
+
     fn fallback_shader() -> String {
         String::from("
             [[stage(vertex)]]
@@ -297,14 +348,34 @@ impl State {
                     winit::event::MouseButton::Left => self.stuff.mouse_left = p_or_r,
                     winit::event::MouseButton::Right => self.stuff.mouse_right = p_or_r,
                     winit::event::MouseButton::Middle => self.stuff.mouse_middle = p_or_r,
-                    _ => (),
+                    _ => return false,
                 }
             },
             WindowEvent::MouseWheel {delta, ..} => {
                 match delta {
                     // winit::event::MouseScrollDelta::PixelDelta(pp) => self.stuff.scroll += (pp.y+pp.x) as f32,
                     winit::event::MouseScrollDelta::LineDelta(x, y) => self.stuff.scroll += x+y,
-                    _ => (),
+                    _ => return false,
+                }
+            },
+            WindowEvent::KeyboardInput {input, ..} => {
+                match input {
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(k),
+                        ..
+                    } => {
+                        match k {
+                            VirtualKeyCode::R => {
+                                self.reset_buffers();
+                            },
+                            VirtualKeyCode::P => {
+                                self.dump_render();
+                            },
+                            _ => return false,
+                        }
+                    },
+                    _ => return false,
                 }
             },
             _ => return false,
@@ -503,7 +574,7 @@ impl State {
     async fn render_windowless(&mut self) {
 
         let u32_size = std::mem::size_of::<u32>() as u32;    
-        let output_buffer_size = (u32_size * self.screen_texture_size.as_ref().unwrap() * self.screen_texture_size.as_ref().unwrap()) as wgpu::BufferAddress;
+        let output_buffer_size = (u32_size * self.screen_texture_size.as_ref().unwrap().0 * self.screen_texture_size.as_ref().unwrap().1) as wgpu::BufferAddress;
         let output_buffer_desc = wgpu::BufferDescriptor {
             size: output_buffer_size,
             usage: wgpu::BufferUsages::COPY_DST
@@ -532,8 +603,8 @@ impl State {
                 buffer: &output_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(u32_size * self.screen_texture_size.unwrap()),
-                    rows_per_image: std::num::NonZeroU32::new(self.screen_texture_size.unwrap()),
+                    bytes_per_row: std::num::NonZeroU32::new(u32_size * self.screen_texture_size.unwrap().0),
+                    rows_per_image: std::num::NonZeroU32::new(self.screen_texture_size.unwrap().1),
                 },
             },
             self.screen_texture_desc.as_ref().unwrap().size,
@@ -556,7 +627,7 @@ impl State {
 
             use image::{ImageBuffer, Rgba};
             let buffer =
-                ImageBuffer::<Rgba<u8>, _>::from_raw(self.screen_texture_size.unwrap(), self.screen_texture_size.unwrap(), data).unwrap();
+                ImageBuffer::<Rgba<u8>, _>::from_raw(self.screen_texture_size.unwrap().0, self.screen_texture_size.unwrap().1, data).unwrap();
             buffer.save(file_name()).unwrap();
         }
         output_buffer.unmap();
@@ -567,8 +638,8 @@ pub fn render_to_image() {
     // https://sotrh.github.io/learn-wgpu/showcase/windowless/
     
     let mut state = pollster::block_on(State::new_windowless());
-    state.stuff.display_width = state.screen_texture_size.unwrap();
-    state.stuff.display_height = state.screen_texture_size.unwrap();
+    state.stuff.display_width = state.screen_texture_size.unwrap().0;
+    state.stuff.display_height = state.screen_texture_size.unwrap().1;
     state.update();
     pollster::block_on(state.render_windowless());
 }

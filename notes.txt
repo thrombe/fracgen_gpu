@@ -19,6 +19,13 @@ bugs:
   . 
 
 plan:
+  /. re initiate screen buffer from cpu on middle click
+    /. so the screen coverage wont matter while clearing
+    /. will be possible to clear render sizes larger than display rez
+  /. press a button to execute render pass in windowless mode and output a png
+    /. use already existing buffers and bind groups and stuff
+  /. use arrayLength() for compute buffer to prevent segfaults when render size > compute_buffer
+    /. this will happen when rendering windowless + bigger render size
   /. send mouse coords in shader so that it can be used for fun things
     . using it as sliders for variables
   . how anti-aliasing
@@ -27,17 +34,7 @@ plan:
   . handle errors properly
 
 buddhabrot:
-  . maintain a vector buffer of active trajectories and if the points go out of bounds, reset them with random values 
-    . how would "+c" work?
-      . maybe store this too?
-    . in fragment buffer, take the values out of the buffer and do the funny calc for color
-  . 1 vec*2+bool buffer for current pos
-    . bool for knowing if mandlebrot or buddhabrot
-  . do mandlebrot calc for newpoints first, to check if it escapes and do the buddhabrot if it escapes in 
-    the required iteration range
-  . only do a fixed number of iterations per frame
-  . 1 u32 buffer to record the hits
-  . also check if point in bulbs before mandlebrot
+  .
 
 plot:
   . 
