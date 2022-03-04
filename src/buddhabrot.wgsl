@@ -1,4 +1,6 @@
 
+/// import ./src/main.wgsl
+/// import ./src/vertex.wgsl
 /// import ./src/rng.wgsl
 
 

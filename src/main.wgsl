@@ -46,9 +46,3 @@ struct Buf {
 [[group(0), binding(2)]]
 var<storage, read_write> buf: Buf;
 
-
-// / import ./src/rng.wgsl
-
-/// import ./src/vertex.wgsl
-/// import ./src/buddhabrot.wgsl
-// / import ./src/plotquations.wgsl

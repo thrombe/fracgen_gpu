@@ -1,4 +1,8 @@
 
+/// import ./src/main.wgsl
+/// import ./src/vertex.wgsl
+
+
 fn line_segment(p: v2f, a: v2f, b: v2f) -> f32 {
     return pow(pow(p.x-a.x, 2.0)+pow(p.y-a.y, 2.0), 0.5)
          + pow(pow(p.x-b.x, 2.0)+pow(p.y-b.y, 2.0), 0.5)

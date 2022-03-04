@@ -92,7 +92,7 @@ impl State {
             surface: Some(surface), device, queue, config: Some(config), size: Some(size), render_pipeline: None, compute_pipeline: None, work_group_count: 1,
             vertex_buffer, num_vertices: VERTICES.len() as u32,
             stuff: Stuff::new(), bind_group_layouts, bind_group, stuff_buffer, compute_buffer,
-            importer: shader_importer::Importer::new("./src/main.wgsl"),
+            importer: shader_importer::Importer::new("./src/plotquations.wgsl"),
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
@@ -130,7 +130,7 @@ impl State {
             surface: None, size: None, device, queue, config: None, render_pipeline: None, compute_pipeline: None, work_group_count: 1,
             vertex_buffer, num_vertices: VERTICES.len() as u32,
             stuff: Stuff::new(), bind_group_layouts, bind_group, stuff_buffer, compute_buffer,
-            importer: shader_importer::Importer::new("./src/main.wgsl"),
+            importer: shader_importer::Importer::new("./src/plotquations.wgsl"),
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
@@ -255,8 +255,10 @@ impl State {
         (bind_group, bind_group_layouts, stuff_buffer, compute_buffer)
     }
 
-    fn reset_buffers(&mut self) {
-        self.screen_buffer = Self::get_screen_buffer(&self.device);
+    fn reset_buffers(&mut self, reset_screen_buffer: bool) {
+        if reset_screen_buffer {
+            self.screen_buffer = Self::get_screen_buffer(&self.device);
+        }
         let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&self.device, &self.screen_buffer, &self.stuff);
         self.bind_group = bind_group;
         self.bind_group_layouts = bind_group_layouts;
@@ -367,10 +369,28 @@ impl State {
                     } => {
                         match k {
                             VirtualKeyCode::R => {
-                                self.reset_buffers();
+                                self.reset_buffers(true);
                             },
                             VirtualKeyCode::P => {
                                 self.dump_render();
+                            },
+                            VirtualKeyCode::Key1 => {
+                                self.importer = shader_importer::Importer::new("./src/plotquations.wgsl");
+                                self.reset_buffers(false);
+                                self.compile();
+                                self.compile();
+                            },
+                            VirtualKeyCode::Key2 => {
+                                self.importer = shader_importer::Importer::new("./src/buddhabrot.wgsl");
+                                self.reset_buffers(false);
+                                self.compile();
+                                self.compile();
+                            },
+                            VirtualKeyCode::Key3 => {
+                                self.importer = shader_importer::Importer::new("./src/mandlebrot.wgsl");
+                                self.reset_buffers(false);
+                                self.compile();
+                                self.compile();
                             },
                             _ => return false,
                         }
