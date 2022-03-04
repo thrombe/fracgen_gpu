@@ -41,15 +41,15 @@ buddhabrot:
   .
 
 mandlebrot:
-  . how do i dump higher rez images while having all pixels completely rendered (requires multiple frames rn)
-    . do not copy the buffers in this
-    . but copy other stuff like, Stuff (maybe?)
-  . maybe do in calculation compute shaders?
-    . how do i make sure that some pixel is done?
-      . put 1 in buffer instead of 0, and if it is 1, its either processing(by some other invocation)/done
-      . this would require atomic stuff tho. might be slow
-    . maybe can impliment in compute shaders in a way that all gets done in single frame when dumping image
-      . hide it behind a toggle (in stuff)
+  /. how do i dump higher rez images while having all pixels completely rendered (requires multiple frames rn)
+    /. do not copy the buffers in this
+    /. but copy other stuff like, Stuff (maybe?)
+  \. maybe do in calculation compute shaders?
+    \. how do i make sure that some pixel is done?
+      \. put 1 in buffer instead of 0, and if it is 1, its either processing(by some other invocation)/done
+      \. this would require atomic stuff tho. might be slow
+    \. maybe can impliment in compute shaders in a way that all gets done in single frame when dumping image
+      /. hide it behind a toggle (in stuff)
 
 plot:
   . 

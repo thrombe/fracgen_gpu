@@ -35,6 +35,7 @@ struct State {
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
     
+    active_shader: ActiveShader,
     importer: shader_importer::Importer,
     compile_status: bool,
     shader_code: Option<String>,
@@ -87,12 +88,13 @@ impl State {
         let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new());
         let vertex_buffer = Self::get_vertex_buffer(&device);
 
+        let active_shader = ActiveShader::Plotquations;
 
         let mut state = Self { 
             surface: Some(surface), device, queue, config: Some(config), size: Some(size), render_pipeline: None, compute_pipeline: None, work_group_count: 1,
             vertex_buffer, num_vertices: VERTICES.len() as u32,
             stuff: Stuff::new(), bind_group_layouts, bind_group, stuff_buffer, compute_buffer,
-            importer: shader_importer::Importer::new("./src/plotquations.wgsl"),
+            importer: shader_importer::Importer::new(&active_shader.to_string()), active_shader,
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
@@ -124,13 +126,17 @@ impl State {
         let vertex_buffer = Self::get_vertex_buffer(&device);
         let screen_buffer = Self::get_screen_buffer(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new());
+        let mut stuff = Stuff::new();
+        stuff.windowless = 1;
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &stuff);
         
+        let active_shader = ActiveShader::Plotquations;
+
         let mut state = Self {
             surface: None, size: None, device, queue, config: None, render_pipeline: None, compute_pipeline: None, work_group_count: 1,
             vertex_buffer, num_vertices: VERTICES.len() as u32,
             stuff: Stuff::new(), bind_group_layouts, bind_group, stuff_buffer, compute_buffer,
-            importer: shader_importer::Importer::new("./src/plotquations.wgsl"),
+            importer: shader_importer::Importer::new(&active_shader.to_string()), active_shader,
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
@@ -268,41 +274,45 @@ impl State {
 
     fn dump_render(&self) {
         dbg!("dumping image");
-        // let (texture_size, texture_desc, texture, texture_view) = State::get_screen_texture(&self.device);
-        // self.screen_texture_size = Some(texture_size);
-        // self.screen_texture_desc = Some(texture_desc);
-        // self.screen_texture_view = Some(texture_view);
-        // self.screen_texture = Some(texture);
-        // pollster::block_on(self.render_windowless());
-
         let mut state = pollster::block_on(State::new_windowless());
-        let buffer_slice = self.screen_buffer.slice(..);
 
-        let buffer_data = {
-            // NOTE: We have to create the mapping THEN device.poll() before await
-            // the future. Otherwise the application will freeze.
-            let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
-            self.device.poll(wgpu::Maintain::Wait);
-            pollster::block_on(async {mapping.await.unwrap()});
-            
-            let data = buffer_slice.get_mapped_range().iter().map(|r| *r).collect::<Vec<u8>>();
-            self.screen_buffer.unmap();
-            data
-        };                 
-        state.screen_buffer = state.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("screen Buffer")),
-            contents: bytemuck::cast_slice(&buffer_data),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        state.screen_buffer = {
+            let buffer_slice = self.screen_buffer.slice(..);
+            let buffer_data = {
+                // NOTE: We have to create the mapping THEN device.poll() before await
+                // the future. Otherwise the application will freeze.
+                let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
+                self.device.poll(wgpu::Maintain::Wait);
+                pollster::block_on(async {mapping.await.unwrap()});
+                
+                let data = buffer_slice.get_mapped_range().iter().map(|r| *r).collect::<Vec<u8>>();
+                self.screen_buffer.unmap();
+                data
+            };                 
+
+            state.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("screen Buffer")),
+                contents: bytemuck::cast_slice(&buffer_data),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            })
+        };
+
         state.stuff = self.stuff.clone();
         state.stuff.display_height = state.stuff.render_height;
         state.stuff.display_width = state.stuff.render_width;
+        state.stuff.windowless = 1;
+        
         let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&state.device, &state.screen_buffer, &state.stuff);
         state.bind_group = bind_group;
         state.bind_group_layouts = bind_group_layouts;
         state.stuff_buffer = stuff_buffer;
         state.compute_buffer = compute_buffer;
-        state.importer.compute = false;
+        
+        state.active_shader = self.active_shader;
+        state.importer = shader_importer::Importer::new(&state.active_shader.to_string());
+        // state.importer.compute = false;
+        state.compile();
+
         dbg!("rendering windowless");
         pollster::block_on(state.render_windowless());
     }
@@ -375,22 +385,25 @@ impl State {
                                 self.dump_render();
                             },
                             VirtualKeyCode::Key1 => {
-                                self.importer = shader_importer::Importer::new("./src/plotquations.wgsl");
-                                self.reset_buffers(false);
-                                self.compile();
-                                self.compile();
+                                self.active_shader = ActiveShader::Plotquations;
+                                self.importer = shader_importer::Importer::new(&self.active_shader.to_string());
+                                if self.compile() {
+                                    self.reset_buffers(false);
+                                }
                             },
                             VirtualKeyCode::Key2 => {
-                                self.importer = shader_importer::Importer::new("./src/buddhabrot.wgsl");
-                                self.reset_buffers(false);
-                                self.compile();
-                                self.compile();
+                                self.active_shader = ActiveShader::Buddhabrot;
+                                self.importer = shader_importer::Importer::new(&self.active_shader.to_string());
+                                if self.compile() {
+                                    self.reset_buffers(false);
+                                }
                             },
                             VirtualKeyCode::Key3 => {
-                                self.importer = shader_importer::Importer::new("./src/mandlebrot.wgsl");
-                                self.reset_buffers(false);
-                                self.compile();
-                                self.compile();
+                                self.active_shader = ActiveShader::Mandlebrot;
+                                self.importer = shader_importer::Importer::new(&self.active_shader.to_string());
+                                if self.compile() {
+                                    self.reset_buffers(false);
+                                }
                             },
                             _ => return false,
                         }
@@ -411,7 +424,7 @@ impl State {
         self.compile();
     }
 
-    fn compile(&mut self) {
+    fn compile(&mut self) -> bool {
         let shader_code = {
             if self.shader_code.is_none() {
                 Some(Self::fallback_shader())
@@ -421,13 +434,13 @@ impl State {
                 self.importer.import()
             }
         };
-        if shader_code.is_none() {return}
-        if !self.compile_status && self.shader_code == shader_code {return}
+        if shader_code.is_none() {return true}
+        if !self.compile_status && self.shader_code == shader_code {return true}
         self.shader_code = shader_code;
 
-        self.compile_render_shaders();
+        let mut compile_stat = self.compile_render_shaders();
         if self.importer.compute | self.compute_pipeline.is_none() {
-            self.compile_compute_shaders();
+            compile_stat = compile_stat && self.compile_compute_shaders();
         }
         
         // update work_group_count if edited in shaders
@@ -438,9 +451,10 @@ impl State {
                 self.work_group_count = work_group_count;
             }
         };
+        compile_stat
     }
 
-    fn compile_render_shaders(&mut self) {
+    fn compile_render_shaders(&mut self) -> bool {
         let (tx, rx) = channel::<wgpu::Error>();
         self.device.on_uncaptured_error(move |e: wgpu::Error| {
             tx.send(e).expect("sending error failed");
@@ -497,14 +511,15 @@ impl State {
         if let Ok(err) = rx.try_recv() {
             self.compile_status = false;
             println!("{}", err);
-            return;
+            return false;
         }
         dbg!("render shaders compiled");
         self.compile_status = true;
         self.render_pipeline = Some(render_pipeline);
+        true
     }
 
-    fn compile_compute_shaders(&mut self) {
+    fn compile_compute_shaders(&mut self) -> bool {
         let (tx, rx) = channel::<wgpu::Error>();
         self.device.on_uncaptured_error(move |e: wgpu::Error| {
             tx.send(e).expect("sending error failed");
@@ -530,11 +545,12 @@ impl State {
         if let Ok(err) = rx.try_recv() {
             self.compile_status = false;
             println!("{}", err);
-            return;
+            return false;
         }
         dbg!("compute shaders compiled");
         self.compile_status = true;
         self.compute_pipeline = Some(compute_pipeline);
+        true
     }
 
     fn get_render_pass<'a>(encoder: &'a mut wgpu::CommandEncoder, view: &'a wgpu::TextureView) -> wgpu::RenderPass<'a> {
@@ -722,9 +738,25 @@ pub fn window_event_loop() {
 
 pub fn main() {
     window_event_loop();
-    // render_to_image();
+    // render_to_image(); ! only does plotquations. need to add a way to choose what shader to run
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ActiveShader {
+    Plotquations,
+    Buddhabrot,
+    Mandlebrot,
+}
+
+impl ToString for ActiveShader {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Plotquations => "./src/plotquations.wgsl",
+            Self::Buddhabrot => "./src/buddhabrot.wgsl",
+            Self::Mandlebrot => "./src/mandlebrot.wgsl",
+        }.to_owned()
+    }
+}
 
 fn file_name() -> String {
     let now: u64 = std::time::SystemTime::now()
@@ -778,6 +810,7 @@ struct Stuff {
     render_height: u32,
     display_width: u32,
     display_height: u32,
+    windowless: u32,
     time: f32,
     cursor_x: f32,
     cursor_y: f32,
@@ -797,6 +830,7 @@ impl Stuff {
             render_height: RENDER_HEIGHT,
             display_width: 100,
             display_height: 100,
+            windowless: 0,
             time: 0.0,
             cursor_x: 0.0,
             cursor_y: 0.0,

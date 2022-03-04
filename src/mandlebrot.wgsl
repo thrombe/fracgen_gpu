@@ -18,9 +18,9 @@ let j = v2f(-0.74571890570893210, -0.11624642707064532);
 let e_to_ix = false;
 
 // think before touching these!!
-let max_iterations_per_frame = 56;
-// let max_iterations_per_frame = 512;
-// let max_iterations_per_frame = 1536;
+let max_iterations_per_frame = 56u;
+// let max_iterations_per_frame = 512u;
+// let max_iterations_per_frame = 1536u;
 
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
@@ -61,7 +61,15 @@ fn get_pos(render_coords: vec2<u32>) -> v2f {
 }
 
 fn get_color(hits: u32) -> v3f {
-   return v3f(f32(hits)/50.0);
+    var map_factor = log2(f32(max_iterations));
+    map_factor = map_factor*17.25;
+
+    // let hits = sqrt(f32(hits)/map_factor);
+    // let hits = log2(f32(hits)/map_factor);
+    let hits = f32(hits)/map_factor;
+
+    let hits = hits*(1.0+0.01*stuff.scroll);
+    return v3f(hits)*v3f(0.0, 1.0, 0.0);
 }
 
 fn reset_ele_at(screen_coords: vec2<u32>, index: u32) {
@@ -75,6 +83,10 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) {
     var ele = compute_buffer.buff[index];
     var z = ele.z;
     let c = ele.c;
+    var max_iterations_per_frame = max_iterations_per_frame;
+    if (stuff.windowless == 1u) {
+        max_iterations_per_frame = max_iterations;
+    }
 
     if (ele.iter == 0u && mandlebrot_early_bailout && !julia && !e_to_ix) {
         let x = c.x - 0.25;
@@ -85,7 +97,7 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) {
         }
     }
 
-    for (var i=0; i<max_iterations_per_frame; i=i+1) {
+    for (var i=0u; i<max_iterations_per_frame; i=i+1u) {
         z = f(z, c);
         ele.iter = ele.iter + 1u;
         if (escape_func(z)) {
@@ -109,6 +121,7 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) {
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
     let i = vec2<u32>(u32(pos.x*render_to_display_ratio), u32(pos.y*render_to_display_ratio));
+    if (i.x >= stuff.render_width) {return v4f(0.0);};
     let index = i.x + i.y*stuff.render_width;
 
     if (compute_buffer.buff[index].c.x == 0.0 && compute_buffer.buff[index].c.y == 0.0) {

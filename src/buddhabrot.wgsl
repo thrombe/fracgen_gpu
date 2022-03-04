@@ -69,7 +69,7 @@ fn get_color(hits: u32) -> v3f {
     // let hits = log2(f32(hits)/map_factor);
     // let hits = f32(hits)/map_factor;
 
-    let hits = hits*(1.0+stuff.scroll/100.0);
+    let hits = hits*(1.0+0.01*stuff.scroll);
 
     var color = v3f(hits);
     let version = 0;
@@ -218,6 +218,7 @@ fn buddhabrot_iterations(id: u32) {
 [[stage(compute), workgroup_size(64)]] // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn
 fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_invocation_id = local_invocation_id*work_group_id
     if (chill_compute) {return;}
+    if (stuff.windowless == 1u) {return;}
     if (limit_new_points_to_cursor && stuff.mouse_left != 1u) {return;}
     let ele = compute_buffer.buff[id.x];
 
@@ -231,7 +232,9 @@ fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_inv
 [[stage(fragment)]]
 fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
-    let index = u32(pos.x*render_to_display_ratio) + u32(pos.y*render_to_display_ratio)*stuff.render_width;
+    let i = vec2<u32>(u32(pos.x*render_to_display_ratio), u32(pos.y*render_to_display_ratio));
+    if (i.x >= stuff.render_width) {return v4f(0.0);};
+    let index = i.x + i.y*stuff.render_width;
     var col = buf.buf[index];
 
     let compute_buffer_size = 1920u*1080u;
