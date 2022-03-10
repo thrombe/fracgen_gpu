@@ -25,6 +25,10 @@ struct State {
     screen_texture_view: Option<wgpu::TextureView>,
 
     screen_buffer: wgpu::Buffer,
+    compute_texture: wgpu::Texture,
+    compute_texture_size: (u32, u32),
+    compute_texture_desc: wgpu::TextureDescriptor<'static>,
+    compute_texture_view: wgpu::TextureView,
 
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -67,7 +71,7 @@ impl State {
         ).await.unwrap();
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                 limits: wgpu::Limits::default(),
                 label: None,
             },
@@ -84,8 +88,9 @@ impl State {
         surface.configure(&device, &config);
         
         let screen_buffer= Self::get_screen_buffer(&device);
+        let (compute_texture_size, compute_texture_desc, compute_texture, compute_texture_view) = Self::get_compute_texture(&device);
 
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new());
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &Stuff::new(), &compute_texture_view);
         let vertex_buffer = Self::get_vertex_buffer(&device);
 
         let active_shader = ActiveShader::Plotquations;
@@ -100,6 +105,7 @@ impl State {
             time: std::time::Instant::now(),
             screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
             screen_buffer,
+            compute_texture, compute_texture_desc, compute_texture_size, compute_texture_view,
         };
         state.compile();
         state
@@ -118,17 +124,25 @@ impl State {
             .await
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&Default::default(), None)
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+                    limits: wgpu::Limits::default(),
+                    label: None,
+                },
+                None,
+            )
             .await
             .unwrap();
 
         let (texture_size, texture_desc, texture, texture_view) = Self::get_screen_texture(&device);
         let vertex_buffer = Self::get_vertex_buffer(&device);
         let screen_buffer = Self::get_screen_buffer(&device);
+        let (compute_texture_size, compute_texture_desc, compute_texture, compute_texture_view) = Self::get_compute_texture(&device);
 
         let mut stuff = Stuff::new();
         stuff.windowless = 1;
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &stuff);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&device, &screen_buffer, &stuff, &compute_texture_view);
         
         let active_shader = ActiveShader::Plotquations;
 
@@ -142,6 +156,7 @@ impl State {
             time: std::time::Instant::now(),
             screen_texture: Some(texture), screen_texture_size: Some(texture_size), screen_texture_desc: Some(texture_desc), screen_texture_view: Some(texture_view),
             screen_buffer,
+            compute_texture, compute_texture_desc, compute_texture_size, compute_texture_view,
         };
         state.compile(); // fallback shader
         state.compile();
@@ -169,6 +184,26 @@ impl State {
         (texture_size, texture_desc, texture, texture_view)
     }
     
+    fn get_compute_texture<'a, 'b>(device: &'a wgpu::Device) -> ((u32, u32), wgpu::TextureDescriptor<'b>, wgpu::Texture, wgpu::TextureView) {
+        let texture_size = (RENDER_WIDTH, RENDER_HEIGHT);
+        let texture_desc = wgpu::TextureDescriptor {
+            size: wgpu::Extent3d {
+                width: texture_size.0,
+                height: texture_size.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba32Float,
+            usage: wgpu::TextureUsages::STORAGE_BINDING,
+            label: None,
+        };
+        let texture = device.create_texture(&texture_desc);
+        let texture_view = texture.create_view(&Default::default());
+        (texture_size, texture_desc, texture, texture_view)
+    }
+    
     fn get_screen_buffer<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
@@ -189,7 +224,7 @@ impl State {
         vertex_buffer
     }
 
-    fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer, stuff: &Stuff) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
+    fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer, stuff: &Stuff, texture_view: &wgpu::TextureView) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1+1)]),
@@ -237,6 +272,18 @@ impl State {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3, // compute texture
+                    visibility: wgpu::ShaderStages::COMPUTE | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::ReadWrite,
+                        format: wgpu::TextureFormat::Rgba32Float,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        // multisampled: false,
+                        // sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                }
             ],
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -255,6 +302,10 @@ impl State {
                     binding: 2,
                     resource: buff.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(texture_view),
+                }
             ],
         });
 
@@ -264,8 +315,11 @@ impl State {
     fn reset_buffers(&mut self, reset_screen_buffer: bool) {
         if reset_screen_buffer {
             self.screen_buffer = Self::get_screen_buffer(&self.device);
+            let (_, _, compute_texture, compute_texture_view) = Self::get_compute_texture(&self.device);
+            self.compute_texture = compute_texture;
+            self.compute_texture_view = compute_texture_view;
         }
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&self.device, &self.screen_buffer, &self.stuff);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&self.device, &self.screen_buffer, &self.stuff, &self.compute_texture_view);
         self.bind_group = bind_group;
         self.bind_group_layouts = bind_group_layouts;
         self.compute_buffer = compute_buffer;
@@ -302,7 +356,7 @@ impl State {
         state.stuff.display_width = state.stuff.render_width;
         state.stuff.windowless = 1;
         
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&state.device, &state.screen_buffer, &state.stuff);
+        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&state.device, &state.screen_buffer, &state.stuff, &state.compute_texture_view);
         state.bind_group = bind_group;
         state.bind_group_layouts = bind_group_layouts;
         state.stuff_buffer = stuff_buffer;
@@ -670,15 +724,15 @@ impl State {
     }
 }
 
-pub fn render_to_image() {
-    // https://sotrh.github.io/learn-wgpu/showcase/windowless/
+// pub fn render_to_image() {
+//     // https://sotrh.github.io/learn-wgpu/showcase/windowless/
     
-    let mut state = pollster::block_on(State::new_windowless());
-    state.stuff.display_width = state.screen_texture_size.unwrap().0;
-    state.stuff.display_height = state.screen_texture_size.unwrap().1;
-    state.update();
-    pollster::block_on(state.render_windowless());
-}
+//     let mut state = pollster::block_on(State::new_windowless());
+//     state.stuff.display_width = state.screen_texture_size.unwrap().0;
+//     state.stuff.display_height = state.screen_texture_size.unwrap().1;
+//     state.update();
+//     pollster::block_on(state.render_windowless());
+// }
 
 pub fn window_event_loop() {
     env_logger::init();

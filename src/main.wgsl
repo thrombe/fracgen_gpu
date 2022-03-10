@@ -7,7 +7,7 @@ struct Stuff {
     display_width: u32;
     display_height: u32;
     windowless: u32;
-    
+
     time: f32;
     cursor_x: f32;
     cursor_y: f32;
@@ -41,10 +41,13 @@ struct TrajectoryBuffer {
 var<storage, read_write> compute_buffer: TrajectoryBuffer;
 
 
-
 struct Buf {
     buf: array<u32>;
 };
 [[group(0), binding(2)]]
 var<storage, read_write> buf: Buf;
+
+
+[[group(0), binding(3)]]
+var compute_texture: texture_storage_2d<rgba32float, read_write>;
 

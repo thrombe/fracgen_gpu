@@ -50,6 +50,10 @@ mandlebrot:
       \. this would require atomic stuff tho. might be slow
     \. maybe can impliment in compute shaders in a way that all gets done in single frame when dumping image
       /. hide it behind a toggle (in stuff)
+  /. how msaa?
+    /. need a buffer for color (color += get_color(i); return color/samples)
+    /. a buffer the size of 3*render size is not feasable as the max buffer size already feels small
+    /. texture?
 
 plot:
   . 
