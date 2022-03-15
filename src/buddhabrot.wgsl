@@ -166,15 +166,9 @@ fn mandlebrot_iterations(id: u32) {
         ele.iter = ele.iter + 1u;
         if (escape_func(z)) {
             if (ele.iter > min_iterations && ele.iter < max_iterations) {
-                if (false) {
-                    let index = get_screen_pos(c);
-                    buf.buf[index] = 1u;
-                    ele.iter = 0u;
-                } else {
-                    ele.iter = 0u;
-                    ele.b = 1u;
-                    z = c;
-                }
+                ele.iter = 0u;
+                ele.b = 1u;
+                z = c;
                 break;
             }
         }

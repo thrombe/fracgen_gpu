@@ -1,8 +1,10 @@
 
 resources:
   . https://www.khronos.org/opengl/wiki/Compute_Shader
+  . https://www.khronos.org/opengl/wiki/Sampler_(GLSL)
   . https://www.w3.org/TR/WGSL/
   . https://sotrh.github.io/learn-wgpu
+  . https://gpuweb.github.io/gpuweb/wgsl/#builtin-functions
 
   . for wgpu on browser
     . https://github.com/sotrh/learn-wgpu/tree/master/code/showcase/pong
@@ -21,11 +23,10 @@ bugs:
 plan:
   /. as some stuff is already pretty specific to buddhabrot/mandlebrot/plotquations, think of a way to
     have them as seperate options instead of just having them in shaders
-    /. maybe import main into these shaders and remove the imports from main
-    . have an enum that can help with this
-    . depending on this enum, shader importer can import these specific shader files (enum.get_path())
-    . also these can control the behaviour of shortcut buttons
-      . for eg, p in mandlebrot might require clearing the buffers first
+    /. have an enum that can help with this
+    /. depending on this enum, shader importer can import these specific shader files (enum.get_path())
+    /. also these can control the behaviour of shortcut buttons
+      \. for eg, p in mandlebrot might require clearing the buffers first
   . maybe increase/decrease the cumpute_buffer invocations/iterations_per_frame based on the frame time
     . how do i check fps?
     . ig its already sync cuz get_current_texture() ??
@@ -35,25 +36,12 @@ plan:
     . pressing some button + scrolling
   . how anti-aliasing
   . can i dump gifs
-  . handle errors properly
 
 buddhabrot:
   .
 
 mandlebrot:
-  /. how do i dump higher rez images while having all pixels completely rendered (requires multiple frames rn)
-    /. do not copy the buffers in this
-    /. but copy other stuff like, Stuff (maybe?)
-  \. maybe do in calculation compute shaders?
-    \. how do i make sure that some pixel is done?
-      \. put 1 in buffer instead of 0, and if it is 1, its either processing(by some other invocation)/done
-      \. this would require atomic stuff tho. might be slow
-    \. maybe can impliment in compute shaders in a way that all gets done in single frame when dumping image
-      /. hide it behind a toggle (in stuff)
-  /. how msaa?
-    /. need a buffer for color (color += get_color(i); return color/samples)
-    /. a buffer the size of 3*render size is not feasable as the max buffer size already feels small
-    /. texture?
+  .
 
 plot:
   . 
