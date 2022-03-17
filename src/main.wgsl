@@ -1,6 +1,4 @@
 
-// https://gpuweb.github.io/gpuweb/wgsl/#builtin-functions
-
 struct Stuff {
     render_width: u32;
     render_height: u32;

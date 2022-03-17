@@ -21,12 +21,6 @@ bugs:
   . 
 
 plan:
-  /. as some stuff is already pretty specific to buddhabrot/mandlebrot/plotquations, think of a way to
-    have them as seperate options instead of just having them in shaders
-    /. have an enum that can help with this
-    /. depending on this enum, shader importer can import these specific shader files (enum.get_path())
-    /. also these can control the behaviour of shortcut buttons
-      \. for eg, p in mandlebrot might require clearing the buffers first
   . maybe increase/decrease the cumpute_buffer invocations/iterations_per_frame based on the frame time
     . how do i check fps?
     . ig its already sync cuz get_current_texture() ??
@@ -41,7 +35,7 @@ buddhabrot:
   .
 
 mandlebrot:
-  .
+  . 
 
 plot:
   . 

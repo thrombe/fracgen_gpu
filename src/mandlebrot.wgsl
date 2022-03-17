@@ -10,6 +10,7 @@ let ignore_n_starting_iterations = 0u;
 let ignore_n_ending_iterations = 0u;
 let mandlebrot_early_bailout = false;
 let samples_per_pix = 10u;
+let windowless_samples_per_pix = 100u; // screen will freeze until this is done. so be careful with this
 
 let scale_factor = 0.01;
 let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
@@ -96,19 +97,19 @@ fn get_color(hits: u32) -> v3f {
 }
 
 
-fn random_z(id: u32) -> v2f {
+fn random_z(id: u32, random_helper: u32) -> v2f {
     let r = v2f(
-        hash_rng(id + bitcast<u32>(stuff.time + stuff.cursor_x)) - 0.5,
-        hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)) - 0.5
+        hash_rng(id + (random_helper+1u)*bitcast<u32>(stuff.time + stuff.cursor_x)) - 0.5,
+        hash_rng(id + (random_helper+1u)*bitcast<u32>(stuff.time*PHI + stuff.cursor_y)) - 0.5
         );
     
     return r; // -0.5 to 0.5
 }
 
-fn reset_ele_at(screen_coords: vec2<u32>, index: u32) {
+fn reset_ele_at(screen_coords: vec2<u32>, index: u32, random_helper: u32) {
     compute_buffer.buff[index].iter = 0u;
     compute_buffer.buff[index].b = samples_per_pix;
-    compute_buffer.buff[index].c = get_pos(screen_coords) + random_z(index)*(scale_factor/f32(stuff.render_height));
+    compute_buffer.buff[index].c = get_pos(screen_coords) + random_z(index, random_helper)*(scale_factor/f32(stuff.render_height));
     compute_buffer.buff[index].z = compute_buffer.buff[index].c;
 }
 
@@ -165,13 +166,24 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     let index = i.x + i.y*stuff.render_width;
 
     if (compute_buffer.buff[index].c.x == 0.0 && compute_buffer.buff[index].c.y == 0.0) {
-        reset_ele_at(i, index);
+        reset_ele_at(i, index, 0u);
     }
 
-    if (compute_buffer.buff[index].b > 0u) {
+    if (stuff.windowless == 1u) {
+        var c = v4f(0.0);
+        for (var j=0u; j<windowless_samples_per_pix; j=j+1u) {
+            if (mandlebrot_iterations(i, index)) {
+                reset_ele_at(i, index, j);
+                let col = v4f(get_color(buf.buf[index]), 1.0);
+                c = c+col;
+            }    
+        }
+        c = c/f32(windowless_samples_per_pix);
+        textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c);
+    } else if (compute_buffer.buff[index].b > 0u) {
         if (mandlebrot_iterations(i, index)) {
             let b = compute_buffer.buff[index].b;
-            reset_ele_at(i, index);
+            reset_ele_at(i, index, 0u);
             compute_buffer.buff[index].b = b;
 
             let col = v4f(get_color(buf.buf[index]), 1.0);
@@ -187,7 +199,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
 
     // reset compute_buffer by pressing mouse middle click
     if (stuff.mouse_middle == 1u) {
-        reset_ele_at(i, index);
+        reset_ele_at(i, index, 0u);
     }
 
     var col = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y))).xyz;
