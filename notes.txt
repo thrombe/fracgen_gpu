@@ -39,3 +39,34 @@ mandlebrot:
 
 plot:
   . 
+
+notes:
+  get wierd cool fractals: (works in both mbrot and bbrot)
+    k. equation (return k + c)
+      1. k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
+      2. k = v2f(z.x*z.x+z.y*z.y, 2.0*z.x*z.y); // gives square
+      3. k = v2f(z.x*z.x+z.y*z.y, -2.0*z.x*z.y); // gives bullet/droplet
+    e. escape func 
+      1. return z.x*z.x + z.y*z.y > 4.0;
+      2. return 1.0/z.x + z.y*z.y > 4.0; // make wierd tendril things
+      3. return 1.0/z.x - z.y*z.y > 4.0; // makes the background black
+      4. return 0.2/z.x ......... > 4.0; // tendril things go smaller
+    i. iteration
+      1. min_iterations = 5000, max_iterations = 100000
+      2. min_iterations = 0, max_iterations = 10
+      3. min_iterations = 0, max_iterations = 20
+      1. min_iterations = 5000, max_iterations = 100000
+    
+    o. observation:
+      1. k1 + e1 + i1 -> normal bbrot
+      2. e1 + i2
+        . (does not give anything intresting in bbrot)
+        1. k2 -> gives square in mandlebrot
+        2. k3 -> gives droplet shaper in mandlebrot
+      3. k* + i2
+        . (i2 -> no glow around tendrils)
+        1. e2 -> rooty/tendrils + bright background
+        2. e3 -> rooty/tendrils + dark background
+        3. e4 -> rooty/tendrils + thinner tendrils
+      4. k* + i3 -> o3 + glow
+
