@@ -69,4 +69,8 @@ notes:
         2. e3 -> rooty/tendrils + dark background
         3. e4 -> rooty/tendrils + thinner tendrils
       4. k* + i3 -> o3 + glow
+      5. with anti bbrot:
+        1. o3.2 and o3.3 swap behaviour
+        2. prefer a bit higher iterations (a lil bit higher than i3)
+        3. k2 and k3 have very unintresting results
 

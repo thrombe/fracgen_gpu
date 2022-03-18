@@ -17,6 +17,7 @@ let mouse_sample_r_theta = true;
 let scale_factor = 2.0;
 let look_offset = v2f(-0.25, 0.0);
 
+let anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
 let julia = false;
 let j = v2f(-0.74571890570893210, -0.11624642707064532);
 let e_to_ix = false;
@@ -170,7 +171,13 @@ fn mandlebrot_iterations(id: u32) {
         let x = c.x - 0.25;
         let q = x*x + c.y*c.y;
         if (((q + x/2.0)*(q + x/2.0)-q/4.0 < 0.0) || (q - 0.0625 < 0.0)) {
-            reset_ele_at(id);
+            if (anti) {
+                ele.iter = 0u;
+                ele.b = max_iterations+1u;
+                compute_buffer.buff[id] = ele;
+            } else {
+                reset_ele_at(id);
+            }
             return;
         }
     }
@@ -179,6 +186,10 @@ fn mandlebrot_iterations(id: u32) {
         z = f(z, c);
         ele.iter = ele.iter + 1u;
         if (escape_func_m(z)) {
+            if (anti) {
+                reset_ele_at(id);
+                return;
+            }
             if (ele.iter > min_iterations && ele.iter < max_iterations) {
                 ele.b = ele.iter+1u;
                 ele.iter = 0u;
@@ -189,7 +200,14 @@ fn mandlebrot_iterations(id: u32) {
             }
         }
         if (ele.iter > max_iterations) {
-            reset_ele_at(id);
+            if (anti) {
+                ele.b = ele.iter+1u;
+                ele.iter = 0u;
+                ele.z = c;
+                compute_buffer.buff[id] = ele;
+            } else {
+                reset_ele_at(id);
+            }
             return;
         }
     }
