@@ -10,10 +10,11 @@ let ignore_n_starting_iterations = 0u;
 let ignore_n_ending_iterations = 0u;
 let mandlebrot_early_bailout = false;
 let samples_per_pix = 10u;
-let windowless_samples_per_pix = 100u; // screen will freeze until this is done. so be careful with this
+let windowless_samples_per_pix = 50u; // screen will freeze until this is done. so be careful with this
 
 let scale_factor = 0.01;
 let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
+// let look_offset = v2f(-0.25, 0.0);
 
 let julia = false;
 let j = v2f(-0.74571890570893210, -0.11624642707064532);
@@ -50,18 +51,6 @@ fn escape_func(z: v2f) -> bool {
     return z.x*z.x + z.y*z.y > 4.0;
 }
 
-fn get_pos(render_coords: vec2<u32>) -> v2f {
-    let scale = f32(stuff.render_height)/scale_factor;
-    let curs = (
-            v2f(f32(render_coords.x), f32(render_coords.y))
-           -v2f(
-                (f32(stuff.render_width))/2.0,
-                f32(stuff.render_height)/2.0
-            )
-        )/scale + look_offset;
-    return curs;
-}
-
 fn get_color(hits: u32) -> v3f {
     // var map_factor = log2(f32(max_iterations));
     // map_factor = map_factor*17.25;
@@ -96,6 +85,18 @@ fn get_color(hits: u32) -> v3f {
     return col*col;
 }
 
+
+fn get_pos(render_coords: vec2<u32>) -> v2f {
+    let scale = f32(stuff.render_height)/scale_factor;
+    let curs = (
+            v2f(f32(render_coords.x), f32(render_coords.y))
+           -v2f(
+                (f32(stuff.render_width))/2.0,
+                f32(stuff.render_height)/2.0
+            )
+        )/scale + look_offset;
+    return curs;
+}
 
 fn random_z(id: u32, random_helper: u32) -> v2f {
     let r = v2f(
