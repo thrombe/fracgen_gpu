@@ -399,7 +399,7 @@ impl State {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    fn input(&mut self, event: &WindowEvent, window: &Window) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.stuff.cursor_x = position.x as f32;
@@ -437,6 +437,13 @@ impl State {
                             },
                             VirtualKeyCode::P => {
                                 self.dump_render();
+                            },
+                            VirtualKeyCode::F => {
+                                if window.fullscreen().is_some() {
+                                    window.set_fullscreen(None);
+                                } else {
+                                    window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(window.current_monitor())));
+                                }
                             },
                             VirtualKeyCode::Key1 => {
                                 self.active_shader = ActiveShader::Plotquations;
@@ -747,7 +754,7 @@ pub fn window_event_loop() {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == window.id() => if !state.input(event) {
+            } if window_id == window.id() => if !state.input(event, &window) {
                 match event {
                     WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
                         input:
