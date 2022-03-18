@@ -179,8 +179,8 @@ fn mandlebrot_iterations(id: u32) {
         ele.iter = ele.iter + 1u;
         if (escape_func_m(z)) {
             if (ele.iter > min_iterations && ele.iter < max_iterations) {
+                ele.b = ele.iter+1u;
                 ele.iter = 0u;
-                ele.b = 1u;
 
                 ele.z = c;
                 compute_buffer.buff[id] = ele;
@@ -204,7 +204,9 @@ fn buddhabrot_iterations(id: u32) {
 
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
-        if (escape_func_b(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
+        ele.b = ele.b - 1u;
+        // if (escape_func_b(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
+        if (ele.b == 0u || ele.iter > max_iterations - ignore_n_ending_iterations) {
             reset_ele_at(id);
             return;
         } else {
