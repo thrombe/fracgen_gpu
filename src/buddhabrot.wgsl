@@ -10,6 +10,7 @@ let ignore_n_starting_iterations = 5000u;
 let ignore_n_ending_iterations = 0u;
 let limit_new_points_to_cursor = false;
 let mandlebrot_early_bailout = false;
+let force_use_escape_func_b = false;
 
 let mouse_sample_size = 2.0;
 let mouse_sample_r_theta = true;
@@ -205,8 +206,10 @@ fn buddhabrot_iterations(id: u32) {
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
         ele.b = ele.b - 1u;
-        // if (escape_func_b(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
-        if (ele.b == 0u || ele.iter > max_iterations - ignore_n_ending_iterations) {
+        if (
+            (force_use_escape_func_b && escape_func_b(z)) ||
+            (!force_use_escape_func_b && ele.b == 0u) ||
+            ele.iter > max_iterations - ignore_n_ending_iterations) {
             reset_ele_at(id);
             return;
         } else {
