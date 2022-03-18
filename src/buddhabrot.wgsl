@@ -11,6 +11,8 @@ let ignore_n_ending_iterations = 0u;
 let limit_new_points_to_cursor = false;
 let mandlebrot_early_bailout = false;
 
+let mouse_sample_size = 2.0;
+let mouse_sample_r_theta = true;
 let scale_factor = 2.0;
 let look_offset = v2f(-0.25, 0.0);
 
@@ -20,6 +22,7 @@ let e_to_ix = false;
 
 // think before touching these!!
 let chill_compute = false; // skip compute, just return
+// let max_iterations_per_frame = 64;
 let max_iterations_per_frame = 256;
 // let max_iterations_per_frame = 512;
 // let max_iterations_per_frame = 1536;
@@ -46,19 +49,13 @@ fn f(z: v2f, c: v2f) -> v2f {
     }
 }
 
-fn escape_func(z: v2f) -> bool {
+fn escape_func_m(z: v2f) -> bool {
     return z.x*z.x + z.y*z.y > 4.0;
 }
 
-fn get_screen_pos(c: v2f) -> u32 {
-    let scale = f32(stuff.render_height)/scale_factor;
-    var c = c - look_offset;
-    c = c*scale + v2f(f32(stuff.render_width)/2.0, f32(stuff.render_height)/2.0);
-    var index = vec2<i32>(i32(c.x), i32(c.y));
-    if (index.x < 0 || index.x >= i32(stuff.render_width) || index.y < 0 || index.y >= i32(stuff.render_height)) {
-        return 0u;
-    }
-    return u32(index.x + index.y*i32(stuff.render_width));
+fn escape_func_b(z: v2f) -> bool {
+    return escape_func_m(z);
+    // return z.x*z.x + z.y*z.y > 4.0;
 }
 
 fn get_color(hits: u32) -> v3f {
@@ -69,11 +66,11 @@ fn get_color(hits: u32) -> v3f {
     // let hits = log2(f32(hits)/map_factor);
     // let hits = f32(hits)/map_factor;
 
-    let hits = hits*(1.0+0.01*stuff.scroll);
+    let hits = hits*(1.0+0.001*stuff.scroll);
 
-    var color = v3f(hits);
     let version = 0;
-    let color_method_mod_off = v3f(15.0, 48.0, 63.0)/255.0;
+    let color_method_mod_off = v3f(0.0588, 0.188, 0.247);
+    var color = v3f(hits);
 
     if (version == 0) { // overflow version
         color.x = hits;
@@ -122,12 +119,29 @@ fn get_color(hits: u32) -> v3f {
 }
 
 
+fn get_screen_pos(c: v2f) -> u32 {
+    let scale = f32(stuff.render_height)/scale_factor;
+    var c = c - look_offset;
+    c = c*scale + v2f(f32(stuff.render_width)/2.0, f32(stuff.render_height)/2.0);
+    var index = vec2<i32>(i32(c.x), i32(c.y));
+    if (index.x < 0 || index.x >= i32(stuff.render_width) || index.y < 0 || index.y >= i32(stuff.render_height)) {
+        return 0u;
+    }
+    return u32(index.x + index.y*i32(stuff.render_width));
+}
 
 fn random_z(id: u32) -> v2f {
-    let r = v2f(
-        hash_rng(id + bitcast<u32>(stuff.time + stuff.cursor_x)) - 0.5,
-        hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)) - 0.5
-        );
+    var r = v2f(
+        hash_rng(id + bitcast<u32>(stuff.time + stuff.cursor_x)),
+        hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)),
+    );
+    if (mouse_sample_r_theta) {
+        r = v2f(mouse_sample_size*r.x*0.5, r.y*2.0*PI);
+        r = r.x*v2f(cos(r.y), sin(r.y));
+    } else {
+        r = r - 0.5;
+        r = r*mouse_sample_size;
+    }
     if (stuff.mouse_left == 1u) {
         // get this by inverting the get_screen_pos func
         let scale = f32(stuff.display_height)/scale_factor;
@@ -146,7 +160,6 @@ fn reset_ele_at(id: u32) {
     compute_buffer.buff[id].z = compute_buffer.buff[id].c;
 }
 
-
 fn mandlebrot_iterations(id: u32) {
     var ele = compute_buffer.buff[id];
     var z = ele.z;
@@ -164,12 +177,14 @@ fn mandlebrot_iterations(id: u32) {
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
         ele.iter = ele.iter + 1u;
-        if (escape_func(z)) {
+        if (escape_func_m(z)) {
             if (ele.iter > min_iterations && ele.iter < max_iterations) {
                 ele.iter = 0u;
                 ele.b = 1u;
-                z = c;
-                break;
+
+                ele.z = c;
+                compute_buffer.buff[id] = ele;
+                return;
             }
         }
         if (ele.iter > max_iterations) {
@@ -189,7 +204,7 @@ fn buddhabrot_iterations(id: u32) {
 
     for (var i=0; i<max_iterations_per_frame; i=i+1) {
         z = f(z, c);
-        if (escape_func(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
+        if (escape_func_b(z) || ele.iter > max_iterations - ignore_n_ending_iterations) {
             reset_ele_at(id);
             return;
         } else {
@@ -233,7 +248,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
 
     let compute_buffer_size = 1920u*1080u;
 
-    // reset board by pressing mouse middle click
+    // reset active trajectories by pressing mouse middle click
     if (stuff.mouse_middle == 1u && index < compute_buffer_size) {
         // buf.buf[index] = 0u;
         reset_ele_at(index);
