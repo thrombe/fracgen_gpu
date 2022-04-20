@@ -17,6 +17,10 @@ custom commands:
   . /// compute_enable
   . /// work_group_count 64
 
+fractal resources:
+  . https://iquilezles.org/articles/
+  . http://blog.hvidtfeldts.net/index.php/2011/06/distance-estimated-3d-fractals-part-i/
+
 bugs:
   . 
 
@@ -31,11 +35,56 @@ plan:
   . how anti-aliasing
   . can i dump gifs
 
+new ideas:
+  . render a 3d fractal with z axis as the f(iteration count).
+    . where f can be a scaling func like sqrt or log
+  . so at z=0, its just a plane, but as it goes further away, it forms the fractal but clearer
+
+flame fractals??
+  . https://en.wikipedia.org/wiki/Fractal_flame
+  . this tut looks good: https://fractalformulas.wordpress.com/2017/05/01/basics-of-flame-fractals/
+  . https://www.ultrafractal.com/kb/flamefractals.html
+
 buddhabrot:
-  .
+  . since this implimentation can know about the exact iteration count of trajectory,
+    have a color mode that colors based on the trajectory length
+  . try complex to the power complex number equation
+    . https://math.stackexchange.com/questions/476968/complex-power-of-a-complex-number
+  . what happens with non polynomial functions?
+    . cuz slight variations to complex number calculation still produces fractals
+  . mandlebrot, but mirror the point so that it always stays in the first quadrant
+    . or some other variations of this kind
+  . get more julia buddhabrot things + the rooty stuff
+  . optimisation techniques?: https://github.com/Michaelangel007/buddhabrot
+  . orbit traps???
+    . can this be applied in bbrot somehow?
+
+buddhabrot but only a section:
+  . https://benedikt-bitterli.me/buddhabrot/
+  . https://github.com/Quuxplusone/Buddhabrot
+  . execute for a grid, find all points that contribute to current section.
+    then look for new points in finer grid around the good points (take care of overlap)
+    and repeat n times while discarding bottom p percentage of points that no not contribute much points.
+    . be careful not to just use points from very small regions. instead allow a range of "contributions"
+      and discard anything outside it
+  . finally select random points from the good regions
+  . choosing not fine enough grid initially will cause to miss a lot of good zones
 
 mandlebrot:
-  . 
+  . make the juliabrot viewer. kinda like in the 3b1b vid: https://youtu.be/LqbZpur38nw at 8:02
+    . use 2 sets of triangles to cover half a screen each
+      . just overlay the mandlebrot render quardilateral on top of the julia one.
+    . spawn 2 windows and let user arrange them
+  . newton's fractal
+    . wip wgsl rust: https://github.com/agausmann/NewtonFractal
+  . smooth coloring
+    . histogram equalization technique
+      .https://github.com/Smoltbob/fractals_rust/blob/master/src/main.rs
+  . different coloring method for inside and outside fractals
+    . inside points can use how close the point ends up to another fixed point or something
+  . orbit traps!!!!!
+    . https://iquilezles.org/articles/ftrapsgeometric/
+    . https://en.wikipedia.org/wiki/Orbit_trap
 
 plot:
   . 
