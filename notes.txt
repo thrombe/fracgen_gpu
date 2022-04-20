@@ -42,6 +42,7 @@ plot:
 
 notes:
   get wierd cool fractals: (works in both mbrot and bbrot)
+    . needs non-smooth coloring
     k. equation (return k + c)
       1. k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
       2. k = v2f(z.x*z.x+z.y*z.y, 2.0*z.x*z.y); // gives square

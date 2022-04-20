@@ -3,6 +3,24 @@
 /// import ./src/vertex.wgsl
 /// import ./src/rng.wgsl
 
+struct TrajectoryPoint {
+    z: v2f;
+    c: v2f;
+    iter: u32;
+    b: u32;
+};
+struct TrajectoryBuffer {
+    buff: array<TrajectoryPoint>;
+};
+[[group(0), binding(1)]]
+var<storage, read_write> compute_buffer: TrajectoryBuffer;
+
+struct Buf {
+    buf: array<u32>;
+};
+[[group(0), binding(2)]]
+var<storage, read_write> buf: Buf;
+
 
 let min_iterations = 5000u;
 let max_iterations = 100000u;
