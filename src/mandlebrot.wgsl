@@ -7,7 +7,7 @@ struct TrajectoryPoint {
     z: v2f;
     c: v2f;
     iter: u32;
-    b: u32;
+    samples: u32;
 };
 struct TrajectoryBuffer {
     buff: array<TrajectoryPoint>;
@@ -36,6 +36,7 @@ let windowless_samples_per_pix = 50u; // screen will freeze until this is done. 
 let smooth_coloring = true;
 
 let scale_factor = 0.01;
+// let scale_factor = 2.0;
 let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
 // let look_offset = v2f(-0.25, 0.0);
 
@@ -61,6 +62,8 @@ fn f(z: v2f, c: v2f) -> v2f {
         k = v2f(r*cos(t), r*sin(t));
     } else {
         k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
+        // k = v2f(z.x*z.x+z.y*z.y, 2.0*z.x*z.y); // gives square
+        // k = v2f(z.x*z.x+z.y*z.y, -2.0*z.x*z.y); // gives bullet/droplet
     }
 
     if (julia) {
@@ -72,6 +75,9 @@ fn f(z: v2f, c: v2f) -> v2f {
 
 fn escape_func(z: v2f) -> bool {
     return z.x*z.x + z.y*z.y > bailout_val*bailout_val;
+    // return 0.2/z.x + z.y*z.y > 4.0; // make wierd root things
+    // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
+    // return 0.2/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
 fn get_color(hits: f32) -> v3f {
@@ -132,7 +138,7 @@ fn random_z(id: u32, random_helper: u32) -> v2f {
 
 fn reset_ele_at(screen_coords: vec2<u32>, index: u32, random_helper: u32) {
     compute_buffer.buff[index].iter = 0u;
-    compute_buffer.buff[index].b = samples_per_pix;
+    compute_buffer.buff[index].samples = samples_per_pix;
     compute_buffer.buff[index].c = get_pos(screen_coords) + random_z(index, random_helper)*(scale_factor/f32(stuff.render_height));
     compute_buffer.buff[index].z = compute_buffer.buff[index].c;
 }
@@ -151,7 +157,7 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
         let x = c.x - 0.25;
         let q = x*x + c.y*c.y;
         if (((q + x/2.0)*(q + x/2.0)-q/4.0 < 0.0) || (q - 0.0625 < 0.0)) {
-            compute_buffer.buff[index].b = compute_buffer.buff[index].b - 1u;
+            compute_buffer.buff[index].samples = compute_buffer.buff[index].samples - 1u;
             buf.buf[index] = 0.0;
             return true;
         }
@@ -185,7 +191,7 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
                 } else {
                     buf.buf[index] =  f32(ele.iter);
                 }
-                ele.b = ele.b - 1u;
+                ele.samples = ele.samples - 1u;
 
                 ele.z = z;
                 compute_buffer.buff[index] = ele;
@@ -193,7 +199,7 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
             }
         }
         if (ele.iter > max_iterations) {
-            compute_buffer.buff[index].b = compute_buffer.buff[index].b - 1u;
+            compute_buffer.buff[index].samples = compute_buffer.buff[index].samples - 1u;
             buf.buf[index] = 0.0;
             return true;
         }
@@ -227,16 +233,16 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
         }
         c = c/f32(windowless_samples_per_pix);
         textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c);
-    } else if (compute_buffer.buff[index].b > 0u) {
+    } else if (compute_buffer.buff[index].samples > 0u) {
         if (mandlebrot_iterations(i, index)) {
-            let b = compute_buffer.buff[index].b;
+            let samples = compute_buffer.buff[index].samples;
             reset_ele_at(i, index, 0u);
-            compute_buffer.buff[index].b = b;
+            compute_buffer.buff[index].samples = samples;
 
             let col = v4f(get_color(buf.buf[index]), 1.0);
             let c2 = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
             textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c2+col);
-            if (compute_buffer.buff[index].b == 0u) {
+            if (compute_buffer.buff[index].samples == 0u) {
                 var c = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
                 c = c/f32(samples_per_pix);
                 textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c);
