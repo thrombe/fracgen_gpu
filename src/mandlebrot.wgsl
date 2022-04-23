@@ -146,17 +146,6 @@ fn escape_func(z: v2f) -> bool {
     // return 0.2/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
-fn sdf(z: v2f) -> f32 {
-    var d = 0.0;
-    // d = sdf_point(rz);
-    // d = sdf_line(z);
-    // d = min(sdf_point(z), sdf_line(z));
-    d = sdf_ninja_star(z)*200.0;
-    // d = sdf_ninja_star_non_smooth(z);
-    // d = sdf_sin(z)*400.0;
-    return d;
-}
-
 fn get_color(hits: f32) -> v3f {
 
     if (distance_estimated) {
@@ -201,6 +190,40 @@ fn get_color(hits: f32) -> v3f {
     }
 }
 
+fn combine_orbit_trap_and_iter_count(orbit_trap_dist: f32, iter_count: f32, inside_mbrot: bool) -> f32 {
+    let c = iter_count;
+    var d = orbit_trap_dist;
+    var e = 0.0;
+    if (inside_mbrot) {
+        // d = abs(d);
+        e = d;
+    } else {
+        // d = abs(d);
+        // e = smoothStep(c, d, stuff.scroll*0.01);
+        // e = d;
+        // e = c;
+        e = min(d, c);
+        // e = c*d*0.0001*(stuff.scroll + 50.0);
+    }
+    return e;
+}
+
+fn choose_orbit_trap_val(orbit_trap_dist: f32, z: v2f) -> f32 {
+    var c = orbit_trap_dist;
+
+    var d = 0.0;
+    // d = sdf_point(z);
+    // d = sdf_line(z);
+    // d = min(sdf_point(z), sdf_line(z));
+    d = sdf_ninja_star(z)*200.0;
+    // d = sdf_ninja_star_non_smooth(z);
+    // d = sdf_sin(z)*400.0;
+
+    var e = 0.0;
+    e = min(c, d);
+    // e = max(c, d);
+    return e;
+}
 
 fn get_pos(render_coords: vec2<u32>) -> v2f {
     let scale = f32(stuff.render_height)/scale_factor;
@@ -291,17 +314,8 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
                     buf.buf[index] =  f32(ele.iter);
                 }
 
-                if (orbit_trap) { // choosing how the iter_count and orbit_trap_dist should be combined
-                    let c = buf.buf[index];
-                    var d = ele.orbit_trap_dist;
-                    // d = abs(d);
-                    var e = 0.0;
-                    // e = smoothStep(c, d, stuff.scroll*0.01);
-                    // e = d;
-                    // e = c;
-                    // e = min(d, c);
-                    e = c*d*0.0001*(stuff.scroll + 50.0);
-                    buf.buf[index] = e;
+                if (orbit_trap) {
+                    buf.buf[index] = combine_orbit_trap_and_iter_count(ele.orbit_trap_dist, buf.buf[index], false);
                 }
 
                 ele.samples = ele.samples - 1u;
@@ -311,12 +325,15 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
                 return true;
             }
         }
-        if (orbit_trap) { // choosing min(dist(Zn - <trap>))   (could use different techniques too)
-            ele.orbit_trap_dist = min(ele.orbit_trap_dist, sdf(z));
+        if (orbit_trap) {
+            ele.orbit_trap_dist = choose_orbit_trap_val(ele.orbit_trap_dist, z);
         }
         if (ele.iter > max_iterations) {
             compute_buffer.buff[index].samples = compute_buffer.buff[index].samples - 1u;
             buf.buf[index] = 0.0;
+            if (orbit_trap) {
+                buf.buf[index] = combine_orbit_trap_and_iter_count(ele.orbit_trap_dist, buf.buf[index], true);
+            }
             return true;
         }
     }
@@ -356,11 +373,14 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
             compute_buffer.buff[index].samples = samples;
 
             let col = v4f(get_color(buf.buf[index]), 1.0);
-            let c2 = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
-            textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c2+col);
+            var c2 = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
+            let samples = f32(samples_per_pix-samples);
+            c2 = c2*(samples - 1.0);
+            c2 = c2+col;
+            c2 = c2/(samples);
+            textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c2);
             if (compute_buffer.buff[index].samples == 0u) {
                 var c = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
-                c = c/f32(samples_per_pix);
                 textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c);
             }
         }
