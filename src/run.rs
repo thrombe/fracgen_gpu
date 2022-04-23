@@ -227,7 +227,7 @@ impl State {
     fn get_bind_group(device: &wgpu::Device, buff: &wgpu::Buffer, stuff: &Stuff, texture_view: &wgpu::TextureView) -> (wgpu::BindGroup, wgpu::BindGroupLayout, wgpu::Buffer, wgpu::Buffer) {
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
-            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920*(2+2+1+1)]),
+            contents: bytemuck::cast_slice(&vec![0u32 ; ((RENDER_HEIGHT)*RENDER_WIDTH*(2+2+2+1+1+1+1)) as usize]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -618,7 +618,7 @@ impl State {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[wgpu::RenderPassColorAttachment {
-                view: view,
+                view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
