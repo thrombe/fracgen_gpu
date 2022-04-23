@@ -25,6 +25,9 @@ bugs:
   . 
 
 plan:
+  . custom commands
+    . impliment ifdef equivalent
+    . #define equivalents but only to trigger ifdefs (basically to have different modes)
   . maybe increase/decrease the cumpute_buffer invocations/iterations_per_frame based on the frame time
     . how do i check fps?
     . ig its already sync cuz get_current_texture() ??
@@ -38,7 +41,7 @@ plan:
 new ideas:
   . render a 3d fractal with z axis as the f(iteration count).
     . where f can be a scaling func like sqrt or log
-  . so at z=0, its just a plane, but as it goes further away, it forms the fractal but clearer
+    . so at z=0, its just a plane, but as it goes further away, it forms the fractal but clearer
 
 flame fractals??
   . https://en.wikipedia.org/wiki/Fractal_flame
@@ -71,23 +74,33 @@ buddhabrot but only a section:
   . choosing not fine enough grid initially will cause to miss a lot of good zones
 
 mandlebrot:
+  . do something so that less TrajectoryPoints are needed (independent of the render rez)
+    . use compute shaders + multiple passes
+      . do p passes per frame such that total time taken is not unreasonable
+      . MSAA can be done across frames too
+        . such that 2nd sample is taken after 1st sample is done for all pixels
+      . make sure that all pixels can be calculated completely within 1 compute pass
+      . this way TrajectoryPoints are not needed at all
+      . also multiple orbit traps can be combined in different ways since no tracking across invocations is needed
+      . maybe seperate this into a different file
+  . a seperate mode for realtime mbrot shaders
+    . all calculations done in 1 pass of fragment shaders
+    . press a button to stop realtime-ness
   . make the juliabrot viewer. kinda like in the 3b1b vid: https://youtu.be/LqbZpur38nw at 8:02
     . use 2 sets of triangles to cover half a screen each
       . just overlay the mandlebrot render quardilateral on top of the julia one.
     . spawn 2 windows and let user arrange them
-  . newton's fractal
-    . wip wgsl rust: https://github.com/agausmann/NewtonFractal
-  . smooth coloring
-    . histogram equalization technique
-      .https://github.com/Smoltbob/fractals_rust/blob/master/src/main.rs
+  . histogram equalization coloring technique
+    . https://github.com/Smoltbob/fractals_rust/blob/master/src/main.rs
   . different coloring method for inside and outside fractals
     . inside points can use how close the point ends up to another fixed point or something
   . orbit traps!!!!!
     . https://iquilezles.org/articles/ftrapsgeometric/
     . https://en.wikipedia.org/wiki/Orbit_trap
 
-plot:
-  . 
+newton's fractal:
+  . wip wgsl rust: https://github.com/agausmann/NewtonFractal
+
 
 notes:
   get wierd cool fractals: (works in both mbrot and bbrot)
