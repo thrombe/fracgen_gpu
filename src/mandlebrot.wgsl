@@ -86,7 +86,6 @@ let min_iterations = 0u;
 let max_iterations = 1000u;
 let ignore_n_starting_iterations = 0u;
 let ignore_n_ending_iterations = 0u;
-let mandlebrot_early_bailout = false;
 let bailout_val = 1000.0;
 let samples_per_pix = 10u;
 let smooth_coloring = true; // depends on the equation. dont use for random equations
@@ -259,16 +258,6 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
     var max_iterations = max_iterations;
     if (distance_estimated) {
         max_iterations = distance_estimated_max_iterations;
-    }
-
-    if (ele.iter == 0u && mandlebrot_early_bailout && !julia && !e_to_ix) {
-        let x = c.x - 0.25;
-        let q = x*x + c.y*c.y;
-        if (((q + x/2.0)*(q + x/2.0)-q/4.0 < 0.0) || (q - 0.0625 < 0.0)) {
-            compute_buffer.buff[index].samples = compute_buffer.buff[index].samples - 1u;
-            buf.buf[index] = 0.0;
-            return true;
-        }
     }
 
     for (var i=0u; i<max_iterations_per_frame; i=i+1u) {
