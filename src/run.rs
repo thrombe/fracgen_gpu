@@ -5,7 +5,9 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::{WindowBuilder, Window},
 };
+use image::{ImageBuffer, Rgba};
 use std::sync::mpsc::channel;
+use bytemuck;
 // use anyhow::{Result, Context};
 
 use super::shader_importer;
@@ -196,7 +198,7 @@ impl State {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsages::STORAGE_BINDING,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
             label: None,
         };
         let texture = device.create_texture(&texture_desc);
@@ -208,7 +210,7 @@ impl State {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
             contents: bytemuck::cast_slice(&vec![0u32 ; (RENDER_HEIGHT*RENDER_WIDTH) as usize]),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
         buffer
     }
@@ -326,30 +328,69 @@ impl State {
         self.stuff_buffer = stuff_buffer;
     }
 
+    fn dump_compute_texture(&mut self) {
+        dbg!("dumping image");
+        let u32_size = std::mem::size_of::<u32>() as u32;
+        
+        let output_buffer_size = (4*u32_size * self.compute_texture_size.0 * self.compute_texture_size.1) as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST
+                // this tells wpgu that we want to read this buffer from the cpu
+                | wgpu::BufferUsages::MAP_READ,
+            label: Some("Output Bufferrrrr"),
+            mapped_at_creation: false,
+        };
+
+        let output_buffer = self.device.create_buffer(&output_buffer_desc);
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
+
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                aspect: wgpu::TextureAspect::All,
+                texture: &self.compute_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &output_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: std::num::NonZeroU32::new(4*u32_size * self.compute_texture_size.0),
+                    rows_per_image: std::num::NonZeroU32::new(self.compute_texture_size.1),
+                },
+            },
+            self.compute_texture_desc.size,
+        );
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        // We need to scope the mapping variables so that we can
+        // unmap the buffer
+        {
+            let buffer_slice = output_buffer.slice(..);
+
+            // NOTE: We have to create the mapping THEN device.poll() before await
+            // the future. Otherwise the application will freeze.
+            let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
+            self.device.poll(wgpu::Maintain::Wait);
+            pollster::block_on(async {mapping.await.unwrap()});
+
+            let data = buffer_slice.get_mapped_range();
+            let data = bytemuck::cast_slice::<u8, f32>(&data).into_iter().map(|e| (e*255.0).clamp(0.0, 255.0) as u8).collect::<Vec<_>>();
+
+            let buffer = ImageBuffer::<Rgba<u8>, _>::from_raw(self.compute_texture_size.0, self.compute_texture_size.1, data).unwrap();
+            buffer.save(file_name()).unwrap();
+        }
+        output_buffer.unmap();
+    }
+
     fn dump_render(&self) {
         dbg!("dumping image");
         let mut state = pollster::block_on(State::new_windowless());
-
-        state.screen_buffer = {
-            let buffer_slice = self.screen_buffer.slice(..);
-            let buffer_data = {
-                // NOTE: We have to create the mapping THEN device.poll() before await
-                // the future. Otherwise the application will freeze.
-                let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
-                self.device.poll(wgpu::Maintain::Wait);
-                pollster::block_on(async {mapping.await.unwrap()});
-                
-                let data = buffer_slice.get_mapped_range().iter().map(|r| *r).collect::<Vec<u8>>();
-                self.screen_buffer.unmap();
-                data
-            };                 
-
-            state.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("screen Buffer")),
-                contents: bytemuck::cast_slice(&buffer_data),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            })
-        };
 
         state.stuff = self.stuff.clone();
         state.stuff.display_height = state.stuff.render_height;
@@ -436,7 +477,15 @@ impl State {
                                 self.reset_buffers(true);
                             },
                             VirtualKeyCode::P => {
-                                self.dump_render();
+                                match self.active_shader {
+                                    ActiveShader::Buddhabrot => { // image is rendered in compute_texture, so just dump it
+                                        self.dump_compute_texture();
+                                    }
+                                    ActiveShader::Mandlebrot => { // since resolution cannot be increased anyway, do not render
+                                        self.dump_compute_texture();
+                                    }
+                                    _ => self.dump_render(),
+                                }
                             },
                             VirtualKeyCode::F => {
                                 if window.fullscreen().is_some() {
@@ -722,7 +771,6 @@ impl State {
 
             let data = buffer_slice.get_mapped_range();
 
-            use image::{ImageBuffer, Rgba};
             let buffer =
                 ImageBuffer::<Rgba<u8>, _>::from_raw(self.screen_texture_size.unwrap().0, self.screen_texture_size.unwrap().1, data).unwrap();
             buffer.save(file_name()).unwrap();

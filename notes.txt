@@ -22,12 +22,26 @@ fractal resources:
   . http://blog.hvidtfeldts.net/index.php/2011/06/distance-estimated-3d-fractals-part-i/
 
 bugs:
-  . 
+  . dumping mandlebrot if rendered only when not in fullscreen, dumps images not rendered fully
+    . to fix, execute in compute shaders instead of in fragment shaders
+      . more taxing on gpu tho
 
 plan:
   . custom commands
     . impliment ifdef equivalent
     . #define equivalents but only to trigger ifdefs (basically to have different modes)
+  . windowless dump across frames + progress
+    . on pressing "p", dump_render() + code of render_windowless() is executed till the call to execute_render_and_compute_pass()
+      and the execute_render_and_compute_pass() is executed n times where n is the max frames it takes to render
+      image completely. each pass per frame
+    . keep a counter to know how many iterations left (with default value as 1 cuz bbrot)
+    . impliment another custom command to get the number of frames it takes to calculate everything
+    . disable checking for shader code edits till this is done
+  /. map_read in buffer features hurts performance
+    /. instead of using a buffer, render stuff to texture directly
+    /. then do what is done in windowless but with the windowed version
+      /. create a readable buffer and copy texture to it and save buffer as image 
+    . this way, bbrot does not even need to render windowless
   . maybe increase/decrease the cumpute_buffer invocations/iterations_per_frame based on the frame time
     . how do i check fps?
     . ig its already sync cuz get_current_texture() ??

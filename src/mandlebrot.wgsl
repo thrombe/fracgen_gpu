@@ -186,7 +186,7 @@ fn get_color(hits: f32) -> v3f {
 
         var col = v3f(r, g, b);
         // col = col.rrr;
-        return col*col;
+        return col;
     }
 }
 
@@ -392,5 +392,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     }
 
     var col = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y))).xyz;
+    // gpu or whatever does color correction when showing on screen. so doing reverse of that as the values do not need to be color corrected
+    col = v3f(pow(col.r, 2.2), pow(col.g, 2.2), pow(col.b, 2.2));
     return v4f(col, 1.0);
 }
