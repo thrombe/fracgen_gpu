@@ -63,8 +63,6 @@ flame fractals??
   . https://www.ultrafractal.com/kb/flamefractals.html
 
 buddhabrot:
-  . since this implimentation can know about the exact iteration count of trajectory,
-    have a color mode that colors based on the trajectory length
   . try complex to the power complex number equation
     . https://math.stackexchange.com/questions/476968/complex-power-of-a-complex-number
   . what happens with non polynomial functions?
@@ -73,8 +71,15 @@ buddhabrot:
     . or some other variations of this kind
   . get more julia buddhabrot things + the rooty stuff
   . optimisation techniques?: https://github.com/Michaelangel007/buddhabrot
-  . orbit traps???
-    . can this be applied in bbrot somehow?
+  . change coloring tech
+    . image[index] += get_col(1_hit_equivalent)
+      . 1_hit_equivalent can be 1.0 or whatever else generated on points/orbits
+    . since this implimentation can know about the exact iteration count of trajectory, color based on the trajectory length
+      . color bigg trajectories with less bias
+  . orbit traps
+    . color entire orbits as f(distance of Zn from the traps)
+    . color the points as f(distance of the point from the traps, hits)    (this isnt really orbit trapping tho)
+    . color points as f(orbit_trap_based_color, non_orbit_trap_based_color)
 
 buddhabrot but only a section:
   . https://benedikt-bitterli.me/buddhabrot/
@@ -106,9 +111,9 @@ mandlebrot:
     . spawn 2 windows and let user arrange them
   . histogram equalization coloring technique
     . https://github.com/Smoltbob/fractals_rust/blob/master/src/main.rs
-  . different coloring method for inside and outside fractals
-    . inside points can use how close the point ends up to another fixed point or something
-  . orbit traps!!!!!
+  /. different coloring method for inside and outside fractals
+    /. inside points can use how close the point ends up to another fixed point or something
+  /. orbit traps!!!!!
     . https://iquilezles.org/articles/ftrapsgeometric/
     . https://en.wikipedia.org/wiki/Orbit_trap
 

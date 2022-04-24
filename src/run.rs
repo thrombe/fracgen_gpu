@@ -388,28 +388,32 @@ impl State {
         output_buffer.unmap();
     }
 
-    fn dump_render(&self) {
+    fn dump_render(&mut self) {
         dbg!("dumping image");
-        let mut state = pollster::block_on(State::new_windowless());
+        let stuff_copy = self.stuff.clone();
+        self.stuff.display_height = RENDER_HEIGHT;
+        self.stuff.display_width = RENDER_WIDTH;
+        self.stuff.windowless = 1;
+        self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
+        // let compute_enabled = self.importer.compute;
+        // self.importer.compute = false;
 
-        state.stuff = self.stuff.clone();
-        state.stuff.display_height = state.stuff.render_height;
-        state.stuff.display_width = state.stuff.render_width;
-        state.stuff.windowless = 1;
-        
-        let (bind_group, bind_group_layouts, stuff_buffer, compute_buffer) = Self::get_bind_group(&state.device, &state.screen_buffer, &state.stuff, &state.compute_texture_view);
-        state.bind_group = bind_group;
-        state.bind_group_layouts = bind_group_layouts;
-        state.stuff_buffer = stuff_buffer;
-        state.compute_buffer = compute_buffer;
-        
-        state.active_shader = self.active_shader;
-        state.importer = shader_importer::Importer::new(&state.active_shader.to_string());
-        // state.importer.compute = false;
-        state.compile();
+        self.compile_render_shaders();
+        if self.importer.compute | self.compute_pipeline.is_none() {
+            self.compile_compute_shaders();
+        }
 
         dbg!("rendering windowless");
-        pollster::block_on(state.render_windowless());
+        pollster::block_on(self.render_windowless());
+
+        self.stuff = stuff_copy;
+        self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
+        // state.importer.compute = compute_enabled;
+
+        self.compile_render_shaders();
+        if self.importer.compute | self.compute_pipeline.is_none() {
+            self.compile_compute_shaders();
+        }
     }
 
     fn fallback_shader() -> String {
@@ -479,7 +483,7 @@ impl State {
                             VirtualKeyCode::P => {
                                 match self.active_shader {
                                     ActiveShader::Buddhabrot => { // image is rendered in compute_texture, so just dump it
-                                        self.dump_compute_texture();
+                                        self.dump_render();
                                     }
                                     ActiveShader::Mandlebrot => { // since resolution cannot be increased anyway, do not render
                                         self.dump_compute_texture();
@@ -580,7 +584,7 @@ impl State {
             ],
             push_constant_ranges: &[],
         });
-        let format = {if self.config.is_some() {self.config.as_ref().unwrap().format} else {self.screen_texture_desc.as_ref().unwrap().format}};
+        let format = {if self.stuff.windowless != 1 {self.config.as_ref().unwrap().format} else {self.screen_texture_desc.as_ref().unwrap().format}};
         let render_pipeline = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),

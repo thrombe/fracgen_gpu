@@ -139,15 +139,20 @@ fn get_color(hits: u32) -> v3f {
 }
 
 
-fn get_screen_pos(c: v2f) -> u32 {
+fn get_screen_pos(c: v2f) -> vec2<i32> {
     let scale = f32(stuff.render_height)/scale_factor;
     var c = c - look_offset;
     c = c*scale + v2f(f32(stuff.render_width)/2.0, f32(stuff.render_height)/2.0);
     var index = vec2<i32>(i32(c.x), i32(c.y));
     if (index.x < 0 || index.x >= i32(stuff.render_width) || index.y < 0 || index.y >= i32(stuff.render_height)) {
-        return 0u;
+        return vec2<i32>(0);
     }
-    return u32(index.x + index.y*i32(stuff.render_width));
+    return index;
+}
+
+fn get_screen_index(c: v2f) -> u32 {
+    let i = get_screen_pos(c);
+    return u32(i.x + i.y*i32(stuff.render_width));
 }
 
 fn random_z(id: u32) -> v2f {
@@ -250,7 +255,7 @@ fn buddhabrot_iterations(id: u32) {
             return;
         } else {
             ele.iter = ele.iter + 1u;
-            let index = get_screen_pos(z);
+            let index = get_screen_index(z);
             if (index != 0u && ele.iter > ignore_n_starting_iterations) {
                 buf.buf[index] = buf.buf[index] + 1u; // maybe make this atomic
             }
@@ -304,7 +309,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     // color selected pixel
     if (stuff.mouse_left == 1u) {
         let j = random_z(index);
-        let i = get_screen_pos(j);
+        let i = get_screen_index(j);
         if (i == index) {
             return v4f(1.0);
         }
