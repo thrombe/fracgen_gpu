@@ -111,8 +111,6 @@ mandlebrot:
     . spawn 2 windows and let user arrange them
   . histogram equalization coloring technique
     . https://github.com/Smoltbob/fractals_rust/blob/master/src/main.rs
-  /. different coloring method for inside and outside fractals
-    /. inside points can use how close the point ends up to another fixed point or something
   /. orbit traps!!!!!
     . https://iquilezles.org/articles/ftrapsgeometric/
     . https://en.wikipedia.org/wiki/Orbit_trap
@@ -128,7 +126,7 @@ notes:
       1. k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
       2. k = v2f(z.x*z.x+z.y*z.y, 2.0*z.x*z.y); // gives square
       3. k = v2f(z.x*z.x+z.y*z.y, -2.0*z.x*z.y); // gives bullet/droplet
-    e. escape func 
+    e. escape func (NOTE: this was basically accidental orbit trap of line x = 0)
       1. return z.x*z.x + z.y*z.y > 4.0;
       2. return 1.0/z.x + z.y*z.y > 4.0; // make wierd tendril things
       3. return 1.0/z.x - z.y*z.y > 4.0; // makes the background black

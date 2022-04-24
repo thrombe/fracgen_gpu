@@ -89,16 +89,13 @@ let ignore_n_ending_iterations = 0u;
 let mandlebrot_early_bailout = false;
 let bailout_val = 1000.0;
 let samples_per_pix = 10u;
-let windowless_samples_per_pix = 50u; // screen will freeze until this is done. so be careful with this
 let smooth_coloring = true; // depends on the equation. dont use for random equations
 let orbit_trap = true;
 let distance_estimated = false; // needs distance_estimated_max_iterations < 257 for f32. otherwise it has a lot of noise
 let distance_estimated_max_iterations = 256u;
 
-let scale_factor = 0.01;
-// let scale_factor = 2.0;
-let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
-// let look_offset = v2f(-0.25, 0.0);
+let scale_factor = 0.01; let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
+// let scale_factor = 2.0; let look_offset = v2f(-0.25, 0.0);
 
 let julia = false;
 let j = v2f(-0.74571890570893210, -0.11624642707064532);
@@ -141,9 +138,6 @@ fn df(z: v2f, c: v2f) -> v2f {
 
 fn escape_func(z: v2f) -> bool {
     return z.x*z.x + z.y*z.y > bailout_val*bailout_val;
-    // return 0.2/z.x + z.y*z.y > 4.0; // make wierd root things
-    // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
-    // return 0.2/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
 fn get_color(hits: f32) -> v3f {
@@ -266,9 +260,6 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
     if (distance_estimated) {
         max_iterations = distance_estimated_max_iterations;
     }
-    if (stuff.windowless == 1u) {
-        max_iterations_per_frame = max_iterations;
-    }
 
     if (ele.iter == 0u && mandlebrot_early_bailout && !julia && !e_to_ix) {
         let x = c.x - 0.25;
@@ -355,18 +346,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     }
 
     // we need a texture for anti aliasing (collecting color from multiple locations and averaging them)
-    if (stuff.windowless == 1u) {
-        var c = v4f(0.0);
-        for (var j=0u; j<windowless_samples_per_pix; j=j+1u) {
-            if (mandlebrot_iterations(i, index)) {
-                reset_ele_at(i, index, j);
-                let col = v4f(get_color(buf.buf[index]), 1.0);
-                c = c+col;
-            }    
-        }
-        c = c/f32(windowless_samples_per_pix);
-        textureStore(compute_texture, vec2<i32>(i32(i.x), i32(i.y)), c);
-    } else if (compute_buffer.buff[index].samples > 0u) {
+    if (compute_buffer.buff[index].samples > 0u) {
         if (mandlebrot_iterations(i, index)) {
             let samples = compute_buffer.buff[index].samples;
             reset_ele_at(i, index, 0u);
