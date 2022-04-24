@@ -102,6 +102,8 @@ mandlebrot:
       . this way TrajectoryPoints are not needed at all
       . also multiple orbit traps can be combined in different ways since no tracking across invocations is needed
       . maybe seperate this into a different file
+      . maybe impliment such that computations are done in smol squares
+        . 1 compute pass does 1 pixel in the box
   . a seperate mode for realtime mbrot shaders
     . all calculations done in 1 pass of fragment shaders
     . press a button to stop realtime-ness

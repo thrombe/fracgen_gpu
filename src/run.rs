@@ -89,6 +89,7 @@ impl State {
         };
         surface.configure(&device, &config);
         
+        let (texture_size, texture_desc, texture, texture_view) = Self::get_screen_texture(&device);
         let screen_buffer= Self::get_screen_buffer(&device);
         let (compute_texture_size, compute_texture_desc, compute_texture, compute_texture_view) = Self::get_compute_texture(&device);
 
@@ -105,7 +106,8 @@ impl State {
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
-            screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
+            // screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
+            screen_texture: Some(texture), screen_texture_size: Some(texture_size), screen_texture_desc: Some(texture_desc), screen_texture_view: Some(texture_view),
             screen_buffer,
             compute_texture, compute_texture_desc, compute_texture_size, compute_texture_view,
         };
@@ -395,8 +397,8 @@ impl State {
         self.stuff.display_width = RENDER_WIDTH;
         self.stuff.windowless = 1;
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
-        // let compute_enabled = self.importer.compute;
-        // self.importer.compute = false;
+        let compute_enabled = self.importer.compute;
+        self.importer.compute = false;
 
         self.compile_render_shaders();
         if self.importer.compute | self.compute_pipeline.is_none() {
@@ -408,7 +410,7 @@ impl State {
 
         self.stuff = stuff_copy;
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
-        // state.importer.compute = compute_enabled;
+        self.importer.compute = compute_enabled;
 
         self.compile_render_shaders();
         if self.importer.compute | self.compute_pipeline.is_none() {
@@ -482,7 +484,7 @@ impl State {
                             },
                             VirtualKeyCode::P => {
                                 match self.active_shader {
-                                    ActiveShader::Buddhabrot => { // image is rendered in compute_texture, so just dump it
+                                    ActiveShader::Buddhabrot => {
                                         self.dump_render();
                                     }
                                     ActiveShader::Mandlebrot => { // since resolution cannot be increased anyway, do not render
