@@ -1,5 +1,4 @@
-
-use bytemuck;
+// use bytemuck;
 use image::{ImageBuffer, Rgba};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -61,34 +60,57 @@ impl State {
 
         // The instance is a handle to our GPU
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
-        let surface = unsafe { instance.create_surface(window) };
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                // power_preference: wgpu::PowerPreference::HighPerformance,
-                power_preference: wgpu::PowerPreference::LowPower,
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            dx12_shader_compiler: Default::default(),
+        });
+        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                // grabs nvidia even without nvidia-offload :/
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                // power_preference: wgpu::PowerPreference::default(),
+
+                // grabs nvidia only when nvidia-offload
+                // power_preference: wgpu::PowerPreference::LowPower,
+
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
-            },
-        ).await.unwrap();
-        let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
-                limits: wgpu::Limits::default(),
-                label: None,
-            },
-            None, // Trace path
-        ).await.unwrap();
+            })
+            .await
+            .unwrap();
+        dbg!(adapter.get_info());
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+                    limits: wgpu::Limits::default(),
+                    label: None,
+                },
+                None, // Trace path
+            )
+            .await
+            .unwrap();
+        let capabilities = surface.get_capabilities(&adapter);
+        // dbg!(wgpu::Limits::default());
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_preferred_format(&adapter).unwrap(),
+            // format: surface.get_preferred_format(&adapter).unwrap(),
+            format: capabilities
+                .formats
+                .iter()
+                .copied()
+                .find(|f| f.is_srgb())
+                .unwrap_or(capabilities.formats[0]),
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
             // present_mode: wgpu::PresentMode::Immediate,
+            alpha_mode: capabilities.alpha_modes[0],
+            view_formats: Vec::new(),
         };
         surface.configure(&device, &config);
-        
+
         let (texture_size, texture_desc, texture, texture_view) = Self::get_screen_texture(&device);
         let screen_buffer = Self::get_screen_buffer(&device);
         let (compute_texture_size, compute_texture_desc, compute_texture, compute_texture_view) =
@@ -104,30 +126,51 @@ impl State {
 
         let active_shader = ActiveShader::Plotquations;
 
-        let mut state = Self { 
-            surface: Some(surface), device, queue, config: Some(config), size: Some(size), render_pipeline: None, compute_pipeline: None, work_group_count: 1,
-            vertex_buffer, num_vertices: VERTICES.len() as u32,
-            stuff: Stuff::new(), bind_group_layouts, bind_group, stuff_buffer, compute_buffer,
-            importer: shader_importer::Importer::new(&active_shader.to_string()), active_shader,
+        let mut state = Self {
+            surface: Some(surface),
+            device,
+            queue,
+            config: Some(config),
+            size: Some(size),
+            render_pipeline: None,
+            compute_pipeline: None,
+            work_group_count: 1,
+            vertex_buffer,
+            num_vertices: VERTICES.len() as u32,
+            stuff: Stuff::new(),
+            bind_group_layouts,
+            bind_group,
+            stuff_buffer,
+            compute_buffer,
+            importer: shader_importer::Importer::new(&active_shader.to_string()),
+            active_shader,
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
             // screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
-            screen_texture: Some(texture), screen_texture_size: Some(texture_size), screen_texture_desc: Some(texture_desc), screen_texture_view: Some(texture_view),
+            screen_texture: Some(texture),
+            screen_texture_size: Some(texture_size),
+            screen_texture_desc: Some(texture_desc),
+            screen_texture_view: Some(texture_view),
             screen_buffer,
-            compute_texture, compute_texture_desc, compute_texture_size, compute_texture_view,
+            compute_texture,
+            compute_texture_desc,
+            compute_texture_size,
+            compute_texture_view,
         };
         state.compile();
         state
     }
-    
-    
+
     async fn new_windowless() -> Self {
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            dx12_shader_compiler: Default::default(),
+        });
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                // power_preference: wgpu::PowerPreference::HighPerformance,
-                power_preference: wgpu::PowerPreference::LowPower,
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                // power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: None,
                 force_fallback_adapter: false,
             })
@@ -215,12 +258,12 @@ impl State {
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             label: None,
+            view_formats: &[],
         };
         let texture = device.create_texture(&texture_desc);
         let texture_view = texture.create_view(&Default::default());
         (texture_size, texture_desc, texture, texture_view)
     }
-    
 
     fn get_compute_texture<'a, 'b>(
         device: &'a wgpu::Device,
@@ -243,12 +286,13 @@ impl State {
             format: wgpu::TextureFormat::Rgba32Float,
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
             label: None,
+            view_formats: &[],
         };
         let texture = device.create_texture(&texture_desc);
         let texture_view = texture.create_view(&Default::default());
         (texture_size, texture_desc, texture, texture_view)
     }
-    
+
     fn get_screen_buffer<'a, 'b>(device: &'a wgpu::Device) -> wgpu::Buffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("screen Buffer")),
@@ -428,8 +472,8 @@ impl State {
                 buffer: &output_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(4*u32_size * self.compute_texture_size.0),
-                    rows_per_image: std::num::NonZeroU32::new(self.compute_texture_size.1),
+                    bytes_per_row: Option::Some(4 * u32_size * self.compute_texture_size.0),
+                    rows_per_image: Option::Some(self.compute_texture_size.1),
                 },
             },
             self.compute_texture_desc.size,
@@ -444,9 +488,11 @@ impl State {
 
             // NOTE: We have to create the mapping THEN device.poll() before await
             // the future. Otherwise the application will freeze.
-            let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
+            buffer_slice.map_async(wgpu::MapMode::Read, |a| {
+                a.unwrap();
+            });
             self.device.poll(wgpu::Maintain::Wait);
-            pollster::block_on(async { mapping.await.unwrap() });
+            // pollster::block_on(async { mapping.await.unwrap() });
 
             let data = buffer_slice.get_mapped_range();
             let data = bytemuck::cast_slice::<u8, f32>(&data)
@@ -498,16 +544,16 @@ impl State {
     fn fallback_shader() -> String {
         String::from(
             "
-            [[stage(vertex)]]
-            fn main_vertex() -> [[builtin(position)]] vec4<f32> {
+            @vertex
+            fn main_vertex() -> @builtin(position) vec4<f32> {
                 return vec4<f32>(1.0);
             }
-            [[stage(fragment)]]
-            fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+            @fragment
+            fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
                 return vec4<f32>(1.0);
             }
-            [[stage(compute), workgroup_size(1)]]
-            fn main_compute([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
+            @compute @workgroup_size(1)
+            fn main_compute(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
             }
         ",
         )
@@ -670,12 +716,13 @@ impl State {
 
     fn compile_render_shaders(&mut self) -> bool {
         let (tx, rx) = channel::<wgpu::Error>();
-        self.device.on_uncaptured_error(move |e: wgpu::Error| {
-            tx.send(e).expect("sending error failed");
-        });
+        self.device
+            .on_uncaptured_error(Box::new(move |e: wgpu::Error| {
+                tx.send(e).expect("sending error failed");
+            }));
         let shader = self
             .device
-            .create_shader_module(&wgpu::ShaderModuleDescriptor {
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Shader"),
                 source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(
                     self.shader_code.as_ref().unwrap(),
@@ -708,11 +755,11 @@ impl State {
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
                     entry_point: "main_fragment",
-                    targets: &[wgpu::ColorTargetState {
+                    targets: &[Some(wgpu::ColorTargetState {
                         format,
                         blend: Some(wgpu::BlendState::REPLACE),
                         write_mask: wgpu::ColorWrites::ALL,
-                    }],
+                    })],
                 }),
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -747,12 +794,13 @@ impl State {
 
     fn compile_compute_shaders(&mut self) -> bool {
         let (tx, rx) = channel::<wgpu::Error>();
-        self.device.on_uncaptured_error(move |e: wgpu::Error| {
-            tx.send(e).expect("sending error failed");
-        });
+        self.device
+            .on_uncaptured_error(Box::new(move |e: wgpu::Error| {
+                tx.send(e).expect("sending error failed");
+            }));
         let shader = self
             .device
-            .create_shader_module(&wgpu::ShaderModuleDescriptor {
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Shader"),
                 source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(
                     self.shader_code.as_ref().unwrap(),
@@ -791,7 +839,7 @@ impl State {
     ) -> wgpu::RenderPass<'a> {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -803,7 +851,7 @@ impl State {
                     }),
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: None,
         })
     }
@@ -818,7 +866,7 @@ impl State {
                 encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
             compute_pass.set_pipeline(self.compute_pipeline.as_ref().unwrap());
             compute_pass.set_bind_group(0, &self.bind_group, &[]);
-            compute_pass.dispatch(self.work_group_count, 1, 1); // opengl minimum requirements are (65535, 65535, 65535)
+            compute_pass.dispatch_workgroups(self.work_group_count, 1, 1); // opengl minimum requirements are (65535, 65535, 65535)
         }
 
         {
@@ -890,10 +938,8 @@ impl State {
                 buffer: &output_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(
-                        u32_size * self.screen_texture_size.unwrap().0,
-                    ),
-                    rows_per_image: std::num::NonZeroU32::new(self.screen_texture_size.unwrap().1),
+                    bytes_per_row: Option::Some(u32_size * self.screen_texture_size.unwrap().0),
+                    rows_per_image: Option::Some(self.screen_texture_size.unwrap().1),
                 },
             },
             self.screen_texture_desc.as_ref().unwrap().size,
@@ -908,9 +954,11 @@ impl State {
 
             // NOTE: We have to create the mapping THEN device.poll() before await
             // the future. Otherwise the application will freeze.
-            let mapping = buffer_slice.map_async(wgpu::MapMode::Read);
+            buffer_slice.map_async(wgpu::MapMode::Read, |a| {
+                a.unwrap();
+            });
             self.device.poll(wgpu::Maintain::Wait);
-            mapping.await.unwrap();
+            // mapping.await.unwrap();
 
             let data = buffer_slice.get_mapped_range();
 
