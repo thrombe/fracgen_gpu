@@ -4,62 +4,67 @@
 /// import ./src/rng.wgsl
 
 struct TrajectoryPoint {
-    z: v2f;
-    c: v2f;
-    iter: u32;
-    b: u32;
+    z: v2f,
+    c: v2f,
+    iter: u32,
+    b: u32,
 };
 struct TrajectoryBuffer {
-    buff: array<TrajectoryPoint>;
+    buff: array<TrajectoryPoint>,
 };
-[[group(0), binding(1)]]
+@group(0) @binding(1)
 var<storage, read_write> compute_buffer: TrajectoryBuffer;
 
 struct Buf {
-    buf: array<u32>;
+    buf: array<u32>,
 };
-[[group(0), binding(2)]]
+@group(0) @binding(2)
 var<storage, read_write> buf: Buf;
 
+@group(0) @binding(3)
+var compute_texture: texture_storage_2d<rgba32float, read_write>;
 
-let min_iterations = 5000u;
-let max_iterations = 100000u;
-let ignore_n_starting_iterations = 5000u;
-let ignore_n_ending_iterations = 0u;
-let limit_new_points_to_cursor = false;
-let mandlebrot_early_bailout = false;
-let force_use_escape_func_b = false;
 
-let mouse_sample_size = 2.0;
-let mouse_sample_r_theta = true;
-let scale_factor = 2.0;
-let look_offset = v2f(-0.25, 0.0);
+const min_iterations = 5000u;
+const max_iterations = 100000u;
+const ignore_n_starting_iterations = 5000u;
+const ignore_n_ending_iterations = 0u;
+const limit_new_points_to_cursor = false;
+const mandlebrot_early_bailout = false;
+const force_use_escape_func_b = false;
 
-let anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
-let julia = false;
-let j = v2f(-0.74571890570893210, -0.11624642707064532);
-let e_to_ix = false;
+const mouse_sample_size = 2.0;
+const mouse_sample_r_theta = true;
+const scale_factor = 2.0;
+const look_offset = v2f(-0.25, 0.0);
+
+const anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
+const julia = false;
+const j = v2f(-0.74571890570893210, -0.11624642707064532);
+const e_to_ix = false;
 
 // think before touching these!!
-let chill_compute = false; // skip compute, just return
-// let max_iterations_per_frame = 64;
-let max_iterations_per_frame = 256;
-// let max_iterations_per_frame = 512;
-// let max_iterations_per_frame = 1536;
+const chill_compute = false; // skip compute, just return
+// const max_iterations_per_frame = 64;
+// const max_iterations_per_frame = 256;
+// const max_iterations_per_frame = 512;
+const max_iterations_per_frame = 1536;
 
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
     if (e_to_ix) {
         let p = 3.0;
         // convert to r*e^(i*theta)
-        let r = sqrt(z.x*z.x+z.y*z.y);
-        let t = atan2(z.y, z.x);
+        var r = sqrt(z.x*z.x+z.y*z.y);
+        var t = atan2(z.y, z.x);
         // raise to pth power and convert back to x + i*y
-        let r = pow(r, p);
-        let t = p*t;
+        r = pow(r, p);
+        t = p*t;
         k = v2f(r*cos(t), r*sin(t));
     } else {
         k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
+        // k = v2f(z.x*z.x+z.y*z.y, 2.0*z.x*z.y); // gives square
+        // k = v2f(z.x*z.x+z.y*z.y, -2.0*z.x*z.y); // gives bullet/droplet
     }
 
     if (julia) {
@@ -71,22 +76,28 @@ fn f(z: v2f, c: v2f) -> v2f {
 
 fn escape_func_m(z: v2f) -> bool {
     return z.x*z.x + z.y*z.y > 4.0;
+    // return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
+    // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
+    // return 0.02/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
 fn escape_func_b(z: v2f) -> bool {
     return escape_func_m(z);
     // return z.x*z.x + z.y*z.y > 4.0;
+    // return 0.2/z.x + z.y*z.y > 4.0; // make wierd root things
+    // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
+    // return 0.2/z.x - z.x*z.x > 4.0; // root things go smaller
 }
 
-fn get_color(hits: u32) -> v3f {
+fn get_color(hits_: u32) -> v3f {
     var map_factor = log2(f32(max_iterations));
     map_factor = map_factor*17.25;
 
-    let hits = sqrt(f32(hits)/map_factor);
+    var hits = sqrt(f32(hits_)/map_factor);
     // let hits = log2(f32(hits)/map_factor);
     // let hits = f32(hits)/map_factor;
 
-    let hits = hits*(1.0+0.001*stuff.scroll);
+    hits = hits*(1.0+0.001*stuff.scroll);
 
     let version = 0;
     let color_method_mod_off = v3f(0.0588, 0.188, 0.247);
@@ -139,9 +150,9 @@ fn get_color(hits: u32) -> v3f {
 }
 
 
-fn get_screen_pos(c: v2f) -> vec2<i32> {
+fn get_screen_pos(c_: v2f) -> vec2<i32> {
     let scale = f32(stuff.render_height)/scale_factor;
-    var c = c - look_offset;
+    var c = c_ - look_offset;
     c = c*scale + v2f(f32(stuff.render_width)/2.0, f32(stuff.render_height)/2.0);
     var index = vec2<i32>(i32(c.x), i32(c.y));
     if (index.x < 0 || index.x >= i32(stuff.render_width) || index.y < 0 || index.y >= i32(stuff.render_height)) {
@@ -182,6 +193,7 @@ fn reset_ele_at(id: u32) {
     compute_buffer.buff[id].iter = 0u;
     compute_buffer.buff[id].b = 0u;
     compute_buffer.buff[id].c = random_z(id);
+    // compute_buffer.buff[id].z = random_z(u32(random_z(id).x));
     compute_buffer.buff[id].z = compute_buffer.buff[id].c;
 }
 
@@ -256,8 +268,13 @@ fn buddhabrot_iterations(id: u32) {
         } else {
             ele.iter = ele.iter + 1u;
             let index = get_screen_index(z);
+            // let index = get_screen_index(v2f(z.x, c.x)); // https://superliminal.com/fractals/bgram/ZrZiOut.htm
             if (index != 0u && ele.iter > ignore_n_starting_iterations) {
                 buf.buf[index] = buf.buf[index] + 1u; // maybe make this atomic
+                // !
+                // let i = get_screen_pos(z);
+                // var c2 = textureLoad(compute_texture, i);
+                // textureStore(compute_texture, i, c2);
             }
         }
     }
@@ -270,8 +287,8 @@ fn buddhabrot_iterations(id: u32) {
 // 1080*1920/64 = 32400
 /// work_group_count 6000
 /// compute_enable
-[[stage(compute), workgroup_size(64)]] // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn
-fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_invocation_id = local_invocation_id*work_group_id
+@compute @workgroup_size(64) // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn
+fn main_compute(@builtin(global_invocation_id) id: vec3<u32>) { // global_invocation_id = local_invocation_id*work_group_id
     if (chill_compute) {return;}
     if (stuff.windowless == 1u) {return;}
     if (limit_new_points_to_cursor && stuff.mouse_left != 1u) {return;}
@@ -284,8 +301,8 @@ fn main_compute([[builtin(global_invocation_id)]] id: vec3<u32>) { // global_inv
     }
 }
 
-[[stage(fragment)]]
-fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+@fragment
+fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
     let i = vec2<u32>(u32(pos.x*render_to_display_ratio), u32(pos.y*render_to_display_ratio));
     if (i.x >= stuff.render_width) {return v4f(0.0);};
@@ -315,6 +332,6 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
         }
     }
 
-    var col = get_color(col);
-    return v4f(col, 1.0);
+    var col1 = get_color(col);
+    return v4f(col1, 1.0);
 }

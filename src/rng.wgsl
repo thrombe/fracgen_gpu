@@ -34,9 +34,9 @@ fn sin_rng(st: v2f) -> f32 {
 //             (d - b) * u.x * u.y);
 // }
 
-fn sin_rng2(st: v2f) -> v2f {
-    let st = v2f( dot(st,v2f(127.1,311.7)),
-              dot(st,v2f(269.5,183.3)) );
+fn sin_rng2(st_: v2f) -> v2f {
+    let st = v2f( dot(st_,v2f(127.1,311.7)),
+              dot(st_,v2f(269.5,183.3)) );
     return -1.0 + 2.0*fract(sin(st)*43758.5453123);
 }
 fn perlin_noise(st: v2f) -> v3f {
@@ -61,8 +61,8 @@ fn gold_noise(st: v2f) -> v3f {
 }
 
 // Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf
-fn hash(state: u32) -> u32 {
-    var state = state;
+fn hash(state_: u32) -> u32 {
+    var state = state_;
     state = state^2747636419u;
     state = state*2654435769u;
     state = state^(state >> 16u);
@@ -72,8 +72,8 @@ fn hash(state: u32) -> u32 {
     return state;
 }
 
-fn hash_rng(m: u32) -> f32 {
-    var m = hash(m);
+fn hash_rng(m_: u32) -> f32 {
+    var m = hash(m_);
     let ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
     let ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
 

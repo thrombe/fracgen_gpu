@@ -25,7 +25,7 @@ fn triangle_function(x: f32, y: f32, cx: f32, cy: f32) -> v3f {
         //   * line_segment(p, d, a)
           * 10.0;
     f = 1.0-f;
-    f = smoothStep(-9.0, 0.0, f);
+    f = smoothstep(-9.0, 0.0, f);
     let color = vec3<f32>(3.0, 1.0, 1.6);
     return vec3<f32>(f) * color;
 }
@@ -84,7 +84,7 @@ fn polar_function(x: f32, y: f32) -> vec3<f32> {
     var l = length(v2f(x, y));
     var theta = atan2(y, x);
     var r = 2.0 + 4.0*sin(sin(stuff.time*0.4)*20.0*theta + stuff.time*20.);
-    var f = smoothStep(0.0, 0.3, -l+r);
+    var f = smoothstep(0.0, 0.3, -l+r);
     return v3f(f);
 }
 fn regular_polygon(x: f32, y: f32) -> vec3<f32> {
@@ -95,17 +95,18 @@ fn regular_polygon(x: f32, y: f32) -> vec3<f32> {
     var a = 2.0*PI/sides;
     var f = cos(floor(0.5 + theta/a)*a - theta)*l;
     f = f*0.1;
-    f = smoothStep(0.4, 0.406, f);
+    f = smoothstep(0.4, 0.406, f);
     return v3f(f);
 }
 fn dot_at_mouse_position(x: f32, y: f32, cx: f32, cy: f32) -> vec3<f32> {
     return v3f(length(v2f(x-cx, y-cy)));
 }
-fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
-    var x = x*0.2 - 0.5;
-    let curx = curx*0.2 - 0.5;
-    let cury = cury*0.2;
-    var y = y*0.2;
+fn mandlebrot(x_: f32, y_: f32, curx_: f32, cury_: f32) -> v3f {
+    var x = x_*0.2 - 0.5;
+    var curx = curx_*0.2 - 0.5;
+    var cury = cury_*0.2;
+
+    var y = y_*0.2;
     let cx = x;
     let cy = y;
 
@@ -136,8 +137,8 @@ fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
 }
 
 
-[[stage(fragment)]]
-fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+@fragment
+fn main_fragment(@builtin(position) pos_: vec4<f32>) -> @location(0) vec4<f32> {
     let width = f32(stuff.display_width);
     let height = f32(stuff.display_height);
     let offset = vec2<f32>(0.0, 0.0);
@@ -146,7 +147,7 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     // var side = 300.0; // static scale
 
 
-    var pos = vec2<f32>(pos.x/width, pos.y/height); // get pos from 0 to 1
+    var pos = vec2<f32>(pos_.x/width, pos_.y/height); // get pos from 0 to 1
     pos.y = 1.0-pos.y; // inverting y axis to get it upright
     pos = pos - vec2<f32>(0.5, 0.5); // (0, 0) at centre of screen
     pos = pos + offset;
