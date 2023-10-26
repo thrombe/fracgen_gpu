@@ -6,6 +6,9 @@
 pkgs.stdenv.mkDerivation rec {
   name = "rust";
   buildInputs = with pkgs; [
+    cargo
+    rustc
+    
     libxkbcommon
     libGL
 

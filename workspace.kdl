@@ -37,15 +37,9 @@ layout {
         }
     }
     tab name="helix" focus=true {
-        pane stacked=true {
-            pane name="helix" {
-                command "hx"
-                args "."
-            }
-            pane name="nvim" {
-                command "nvim"
-                args "-c" "Telescope git_files"
-            }
+        pane name="helix" {
+            command "hx"
+            args "."
         }
     }
     tab name="shell"{
@@ -55,11 +49,11 @@ layout {
         pane stacked=true {
             pane start_suspended=true name="cargo run" {
                 command "cargo"
-                args "run" "--release"
+                args "run"
             }
             pane start_suspended=true name="cargo run --release" {
                 command "cargo"
-                args "run"
+                args "run" "--release"
             }
         }
     }
