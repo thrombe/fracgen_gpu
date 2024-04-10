@@ -27,19 +27,29 @@ var compute_texture: texture_storage_2d<rgba32float, read_write>;
 const bg_frac_bright = 5.0;
 const scroll_multiplier = 0.01;
 
-const min_iterations = 5000u;
-const max_iterations = 100000u;
-const ignore_n_starting_iterations = 5000u;
+// /// work_group_count 15000
+// const min_iterations = 5000u;
+// const max_iterations = 100000u;
+// const ignore_n_starting_iterations = 5000u;
+
+/// work_group_count 60000
+const min_iterations = 0u;
+const max_iterations = 30u;
+const ignore_n_starting_iterations = 0u;
+
+// const limit_new_points_to_cursor = false;
+const limit_new_points_to_cursor = true;
 
 const ignore_n_ending_iterations = 0u;
-const limit_new_points_to_cursor = false;
 const mandlebrot_early_bailout = false;
 const force_use_escape_func_b = false;
 
 const mouse_sample_size = 2.0;
 const mouse_sample_r_theta = true;
-const scale_factor = 2.0;
-const look_offset = v2f(-0.25, 0.0);
+const scale_factor = 4.5;
+// const look_offset = v2f(-0.25, 0.0);
+// const scale_factor = 1.0;
+const look_offset = v2f(0.15, 0.0);
 
 // const e_to_ix = false;
 const e_to_ix = true;
@@ -92,12 +102,13 @@ fn f(z: v2f, c: v2f) -> v2f {
 }
 
 fn escape_func_m(z: v2f) -> bool {
-    return z.x*z.x + z.y*z.y > 4.0;
+    // return z.x*z.x + z.y*z.y > 4.0;
     // return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
     // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
-    // return 0.02/z.x - z.y*z.y > 4.0; // root things go smaller
+    return 0.01/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
+// OOF: why is this here again??
 fn escape_func_b(z: v2f) -> bool {
     return escape_func_m(z);
     // return z.x*z.x + z.y*z.y > 4.0;
@@ -312,7 +323,8 @@ fn buddhabrot_iterations(id: u32) {
 
 
 // 1080*1920/64 = 32400
-/// work_group_count 6000
+// work_group_count 6000
+// work_group_count 15000
 /// compute_enable
 @compute @workgroup_size(64) // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn
 fn main_compute(@builtin(global_invocation_id) id: vec3<u32>) { // global_invocation_id = local_invocation_id*work_group_id
