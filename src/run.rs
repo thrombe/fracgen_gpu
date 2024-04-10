@@ -11,6 +11,12 @@ use winit::{
 
 use super::shader_importer;
 
+// TODO:
+// - make this dynamic
+// - try to request max buffer size based on this.
+// - update to newer version of wgpu
+// - maybe just switch to bevy
+// - +egui variables
 const M: u32 = 1;
 const RENDER_WIDTH: u32 =  2560* M;
 const RENDER_HEIGHT: u32 = 1440 * M;

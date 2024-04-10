@@ -22,6 +22,14 @@ fractal resources:
   . http://blog.hvidtfeldts.net/index.php/2011/06/distance-estimated-3d-fractals-part-i/
 
 bugs:
+  . gamma correction + MSAA
+    . NOTE: color correction is not really needed as this is not physically based
+    . how do i do this? (dumping image)
+    . sum(get_col()^2)^(1/2)
+    . sum(get_col())
+    . sum(get_col()^2.2)^(1/2.2)
+    . sum(get_col()^(1/2.2))
+      . AA after doing color correction (maybe probably the most correct)
   . dumping mandlebrot if rendered only when not in fullscreen, dumps images not rendered fully
     . to fix, execute in compute shaders instead of in fragment shaders
       . more taxing on gpu tho
@@ -56,6 +64,17 @@ new ideas:
   . render a 3d fractal with z axis as the f(iteration count).
     . where f can be a scaling func like sqrt or log
     . so at z=0, its just a plane, but as it goes further away, it forms the fractal but clearer
+  . hybrid fractals like those in mandlebulber2
+    . try with DE and without DE
+    . switch between multiple fractal equations depending on current iter
+    . have a fixed loop of what equation to use and in what order
+    . threshold of n for using what equation
+    . f(eqn1, eqn2)
+
+raymarch:
+  . make a mode where the gpu does not execute all shaders, it just shows the last frame till code edited
+  . a mode for manual shader compile triggers
+  . global kb shortcuts for fullscreen, compiling shaders (dont auto compile)
 
 flame fractals??
   . https://en.wikipedia.org/wiki/Fractal_flame
@@ -116,6 +135,11 @@ mandlebrot:
   /. orbit traps!!!!!
     . https://iquilezles.org/articles/ftrapsgeometric/
     . https://en.wikipedia.org/wiki/Orbit_trap
+    . https://www.shadertoy.com/view/Wl2Gz1
+  . bitmap orbit trap thing
+    . iterate Zn and sample a color from a texture at the clamp(Zn, 0.0, 1.0) coords (not clamping works too for some reason)
+      and take the first color hit and break (alpha channel != 0 (assuming the texture has 0.0 alpha for bg))
+      . https://www.shadertoy.com/view/4slGWH
 
 newton's fractal:
   . wip wgsl rust: https://github.com/agausmann/NewtonFractal
