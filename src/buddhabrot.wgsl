@@ -25,10 +25,12 @@ var<storage, read_write> buf: Buf;
 var compute_texture: texture_storage_2d<rgba32float, read_write>;
 
 const bg_frac_bright = 5.0;
+const scroll_multiplier = 0.01;
 
 const min_iterations = 5000u;
 const max_iterations = 100000u;
 const ignore_n_starting_iterations = 5000u;
+
 const ignore_n_ending_iterations = 0u;
 const limit_new_points_to_cursor = false;
 const mandlebrot_early_bailout = false;
@@ -101,15 +103,24 @@ fn escape_func_b(z: v2f) -> bool {
     // return 0.2/z.x - z.x*z.x > 4.0; // root things go smaller
 }
 
-fn get_color(hits_: u32) -> v3f {
+fn map_hit_count(_hits: f32) -> f32 {
+    var hits = f32(_hits);
     var map_factor = log2(f32(max_iterations));
     map_factor = map_factor*17.25;
 
-    var hits = sqrt(f32(hits_)/map_factor);
-    // let hits = log2(f32(hits)/map_factor);
-    // let hits = f32(hits)/map_factor;
+    hits = pow(hits, 0.45);
 
-    hits = hits*(1.0+0.001*stuff.scroll);
+    hits = pow(hits/map_factor, 0.7);
+    // hits = sqrt(hits/map_factor);
+    // hits = log2(hits/map_factor);
+    // hits = hits/map_factor;
+
+    hits = hits*(1.0+scroll_multiplier*stuff.scroll);
+    return hits;
+}
+
+fn get_color(_hits: u32) -> v3f {
+    let hits = map_hit_count(f32(_hits));
 
     let version = 0;
     let color_method_mod_off = v3f(0.0588, 0.188, 0.247);
