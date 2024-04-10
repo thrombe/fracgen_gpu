@@ -24,6 +24,7 @@ var<storage, read_write> buf: Buf;
 @group(0) @binding(3)
 var compute_texture: texture_storage_2d<rgba32float, read_write>;
 
+const bg_frac_bright = 5.0;
 
 const min_iterations = 5000u;
 const max_iterations = 100000u;
