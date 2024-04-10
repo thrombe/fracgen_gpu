@@ -4,27 +4,27 @@
 /// import ./src/rng.wgsl
 
 struct TrajectoryPoint {
-    z: v2f;
-    c: v2f;
-    dz: v2f;
-    iter: u32;
-    samples: u32;
-    orbit_trap_dist: f32;
-    place_holder: u32; // struct size increases by multiples of 64bits for some reason?
+    z: v2f,
+    c: v2f,
+    dz: v2f,
+    iter: u32,
+    samples: u32,
+    orbit_trap_dist: f32,
+    place_holder: u32, // struct size increases by multiples of 64bits for some reason?
 };
 struct TrajectoryBuffer {
-    buff: array<TrajectoryPoint>;
+    buff: array<TrajectoryPoint>,
 };
-[[group(0), binding(1)]]
+@group(0) @binding(1)
 var<storage, read_write> compute_buffer: TrajectoryBuffer;
 
 struct Buf {
-    buf: array<f32>;
+    buf: array<f32>,
 };
-[[group(0), binding(2)]]
+@group(0) @binding(2)
 var<storage, read_write> buf: Buf;
 
-[[group(0), binding(3)]]
+@group(0) @binding(3)
 var compute_texture: texture_storage_2d<rgba32float, read_write>;
 
 
@@ -39,19 +39,19 @@ fn complex_mul(a: v2f, b: v2f) -> v2f {
     return v2f( a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x );
 }
 
-fn sdf_point(z: v2f) -> f32 {
-    let z = z - v2f(10.0, 2.0);
+fn sdf_point(_z: v2f) -> f32 {
+    let z = _z - v2f(10.0, 2.0);
     return sqrt(dot(z, z));
 }
 
 fn sdf_line(z: v2f) -> f32 {
-    let z = v2f(min(z.x, 10.0), z.y - 0.5);
-    let z = z - v2f(10.0+stuff.scroll, 2.0);
-    return sqrt(dot(z, z)) - 0.1;
+    let z1 = v2f(min(z.x, 10.0), z.y - 0.5);
+    let z2 = z1 - v2f(10.0+stuff.scroll, 2.0);
+    return sqrt(dot(z2, z2)) - 0.1;
 }
 
-fn sdf_ninja_star(z: v2f) -> f32 {
-    let z = z - v2f(4.0);
+fn sdf_ninja_star(_z: v2f) -> f32 {
+    let z = _z - v2f(4.0);
     let r = sqrt(length(z));
     let a = atan2(z.y, z.x);
     return r - 1.0 + sin(3.0*a+2.0*r*r)/2.0;
@@ -66,7 +66,7 @@ fn sdf_ninja_star_non_smooth(z: v2f) -> f32 {
     )/(2.0*h.x);
     let de = abs(d)/length(grad);
     let e = 0.2;
-    return smoothStep(1.0*e, 2.0*e, de);
+    return smoothstep(1.0*e, 2.0*e, de);
 }
 
 fn sdf_sin(z: v2f) -> f32 {
@@ -82,39 +82,39 @@ fn sdf_sin(z: v2f) -> f32 {
 
 
 
-let min_iterations = 0u;
-let max_iterations = 1000u;
-let ignore_n_starting_iterations = 0u;
-let ignore_n_ending_iterations = 0u;
-let bailout_val = 1000.0;
-let samples_per_pix = 10u;
-let smooth_coloring = true; // depends on the equation. dont use for random equations
-let orbit_trap = true;
-let distance_estimated = false; // needs distance_estimated_max_iterations < 257 for f32. otherwise it has a lot of noise
-let distance_estimated_max_iterations = 256u;
+const min_iterations = 0u;
+const max_iterations = 1000u;
+const ignore_n_starting_iterations = 0u;
+const ignore_n_ending_iterations = 0u;
+const bailout_val = 1000.0;
+const samples_per_pix = 10u;
+const smooth_coloring = true; // depends on the equation. dont use for random equations
+const orbit_trap = true;
+const distance_estimated = false; // needs distance_estimated_max_iterations < 257 for f32. otherwise it has a lot of noise
+const distance_estimated_max_iterations = 256u;
 
-let scale_factor = 0.01; let look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
-// let scale_factor = 2.0; let look_offset = v2f(-0.25, 0.0);
+// const scale_factor = 0.01; const look_offset = v2f(-0.74571890570893210, 0.11765642707064532);
+const scale_factor = 2.0; const look_offset = v2f(-0.25, 0.0);
 
-let julia = false;
-let j = v2f(-0.74571890570893210, -0.11624642707064532);
-let e_to_ix = false;
+const julia = false;
+const j = v2f(-0.74571890570893210, -0.11624642707064532);
+const e_to_ix = false;
 
 // think before touching these!!
-let max_iterations_per_frame = 256u;
-// let max_iterations_per_frame = 512u;
-// let max_iterations_per_frame = 1536u;
+const max_iterations_per_frame = 256u;
+// const max_iterations_per_frame = 512u;
+// const max_iterations_per_frame = 1536u;
 
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
     if (e_to_ix) {
         let p = -32.0;
         // convert to r*e^(i*theta)
-        let r = sqrt(z.x*z.x+z.y*z.y);
-        let t = atan2(z.y, z.x);
+        var r = sqrt(z.x*z.x+z.y*z.y);
+        var t = atan2(z.y, z.x);
         // raise to pth power and convert back to x + i*y
-        let r = pow(r, p);
-        let t = p*t;
+        r = pow(r, p);
+        t = p*t;
         k = v2f(r*cos(t), r*sin(t));
     } else {
         k = v2f(z.x*z.x-z.y*z.y, 2.0*z.x*z.y);
@@ -323,8 +323,8 @@ fn mandlebrot_iterations(screen_coords: vec2<u32>, index: u32) -> bool {
     return false;
 }
 
-[[stage(fragment)]]
-fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+@fragment
+fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
     let i = vec2<u32>(u32(pos.x*render_to_display_ratio), u32(pos.y*render_to_display_ratio));
     if (i.x >= stuff.render_width) {return v4f(0.0);};
@@ -337,13 +337,13 @@ fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f
     // we need a texture for anti aliasing (collecting color from multiple locations and averaging them)
     if (compute_buffer.buff[index].samples > 0u) {
         if (mandlebrot_iterations(i, index)) {
-            let samples = compute_buffer.buff[index].samples;
+            let _samples = compute_buffer.buff[index].samples;
             reset_ele_at(i, index, 0u);
-            compute_buffer.buff[index].samples = samples;
+            compute_buffer.buff[index].samples = _samples;
 
             let col = v4f(get_color(buf.buf[index]), 1.0);
             var c2 = textureLoad(compute_texture, vec2<i32>(i32(i.x), i32(i.y)));
-            let samples = f32(samples_per_pix-samples);
+            let samples = f32(samples_per_pix-_samples);
             c2 = c2*(samples - 1.0);
             c2 = c2+col;
             c2 = c2/(samples);
