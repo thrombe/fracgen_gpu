@@ -12,8 +12,8 @@ use winit::{
 use super::shader_importer;
 
 const M: u32 = 1;
-const RENDER_WIDTH: u32 = 1920 * M;
-const RENDER_HEIGHT: u32 = 1080 * M;
+const RENDER_WIDTH: u32 =  2560* M;
+const RENDER_HEIGHT: u32 = 1440 * M;
 
 struct State {
     surface: Option<wgpu::Surface>,
@@ -84,7 +84,10 @@ impl State {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
-                    limits: wgpu::Limits::default(),
+                    limits: wgpu::Limits {
+                        max_storage_buffer_binding_size: 147456000,
+                        ..wgpu::Limits::default()
+                    },
                     label: None,
                 },
                 None, // Trace path
@@ -1062,7 +1065,8 @@ impl ToString for ActiveShader {
             Self::Plotquations => "./src/plotquations.wgsl",
             Self::Buddhabrot => "./src/buddhabrot.wgsl",
             Self::Mandlebrot => "./src/mandlebrot.wgsl",
-        }.to_owned()
+        }
+        .to_owned()
     }
 }
 

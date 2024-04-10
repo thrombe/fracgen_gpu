@@ -309,7 +309,7 @@ fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let index = i.x + i.y*stuff.render_width;
     var col = buf.buf[index];
 
-    let compute_buffer_size = 1920u*1080u;
+    let compute_buffer_size = 2560u*1440u;
 
     // reset active trajectories by pressing mouse middle click
     if (stuff.mouse_middle == 1u && index < compute_buffer_size) {
