@@ -100,6 +100,10 @@
             (pkgs.buildFHSEnv {
               name = "fhs-shell";
               targetPkgs = packages;
+              runScript = "${pkgs.zsh}/bin/zsh";
+              profile = ''
+                export FHS=1
+              '';
             })
           ]
           ++ self.packages."${system}".default.nativeBuildInputs
