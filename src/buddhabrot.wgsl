@@ -301,6 +301,43 @@ fn main_compute(@builtin(global_invocation_id) id: vec3<u32>) { // global_invoca
     }
 }
 
+
+fn simple_mandlebrot(_c: v2f) -> v3f {
+    var c = _c;
+    var z = c;
+
+    // early bailout
+    // let x = c.x - 0.25;
+    // let q = x*x + c.y*c.y;
+    // if (((q + x/2.0)*(q + x/2.0)-q/4.0 < 0.0) || (q - 0.0625 < 0.0)) {
+    //     return v3f(0.0);
+    // }
+
+    let max_iter = 40;
+    var iter = 0;
+    for (var i=0; i<max_iter; i=i+1) {
+        z = f(z, c);
+        iter = iter + 1;
+        if (z.x*z.x + z.y*z.y > 4.0) {
+            return v3f(f32(iter) * bg_frac_bright/3000.0);
+        }
+    }
+
+    return v3f(0.0);
+}
+
+fn get_pos(render_coords: vec2<u32>) -> v2f {
+    let scale = f32(stuff.render_height)/scale_factor;
+    let curs = (
+            v2f(f32(render_coords.x), f32(render_coords.y))
+           -v2f(
+                (f32(stuff.render_width))/2.0,
+                f32(stuff.render_height)/2.0
+            )
+        )/scale + look_offset;
+    return curs;
+}
+
 @fragment
 fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let render_to_display_ratio = f32(stuff.render_height)/f32(stuff.display_height);
@@ -332,6 +369,7 @@ fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         }
     }
 
-    var col1 = get_color(col);
+    var col1 = simple_mandlebrot(get_pos(i));
+    col1 += get_color(col);
     return v4f(col1, 1.0);
 }
