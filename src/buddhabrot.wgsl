@@ -24,13 +24,13 @@ var<storage, read_write> buf: Buf;
 @group(0) @binding(3)
 var compute_texture: texture_storage_2d<rgba32float, read_write>;
 
-const bg_frac_bright = 5.0;
+const bg_frac_bright = 2.0;
 const scroll_multiplier = 0.01;
 
 // /// work_group_count 15000
-// const min_iterations = 5000u;
-// const max_iterations = 100000u;
-// const ignore_n_starting_iterations = 5000u;
+// const min_iterations = 500u;
+// const max_iterations = 10000u;
+// const ignore_n_starting_iterations = 500u;
 
 /// work_group_count 60000
 const min_iterations = 0u;
@@ -101,9 +101,9 @@ fn f(z: v2f, c: v2f) -> v2f {
 
 fn escape_func_m(z: v2f) -> bool {
     // return z.x*z.x + z.y*z.y > 4.0;
-    // return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
+    return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
     // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
-    return 0.01/z.x - z.y*z.y > 4.0; // root things go smaller
+    // return 0.01/z.x - z.y*z.y > 4.0; // root things go smaller
 }
 
 // OOF: why is this here again??
