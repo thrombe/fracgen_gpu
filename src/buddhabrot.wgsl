@@ -50,6 +50,17 @@ const chill_compute = false; // skip compute, just return
 // const max_iterations_per_frame = 512;
 const max_iterations_per_frame = 1536;
 
+fn mouse_radius_map(_r: f32) -> f32 {
+    var r = _r;
+    // r = sqrt(r);
+    // r = pow(r*1.0, -1.0);
+    r = pow((-r + 1.0), -0.1) - 1.0;
+    r = sqrt(r);
+
+    r = mouse_sample_size*r*0.5;
+    return r;
+}
+
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
     if (e_to_ix) {
@@ -172,7 +183,8 @@ fn random_z(id: u32) -> v2f {
         hash_rng(id + bitcast<u32>(stuff.time*PHI + stuff.cursor_y)),
     );
     if (mouse_sample_r_theta) {
-        r = v2f(mouse_sample_size*r.x*0.5, r.y*2.0*PI);
+        r = v2f(r.x, r.y*2.0*PI);
+        r.x = mouse_radius_map(r.x);
         r = r.x*v2f(cos(r.y), sin(r.y));
     } else {
         r = r - 0.5;
