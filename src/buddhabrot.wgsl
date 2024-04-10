@@ -41,10 +41,13 @@ const mouse_sample_r_theta = true;
 const scale_factor = 2.0;
 const look_offset = v2f(-0.25, 0.0);
 
+// const e_to_ix = false;
+const e_to_ix = true;
+const e_to_ix_pow = -2.0;
+
 const anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
 const julia = false;
 const j = v2f(-0.74571890570893210, -0.11624642707064532);
-const e_to_ix = false;
 
 // think before touching these!!
 const chill_compute = false; // skip compute, just return
@@ -67,7 +70,7 @@ fn mouse_radius_map(_r: f32) -> f32 {
 fn f(z: v2f, c: v2f) -> v2f {
     var k = v2f(0.0);
     if (e_to_ix) {
-        let p = 3.0;
+        let p = e_to_ix_pow;
         // convert to r*e^(i*theta)
         var r = sqrt(z.x*z.x+z.y*z.y);
         var t = atan2(z.y, z.x);
