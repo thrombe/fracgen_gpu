@@ -17,9 +17,12 @@ use super::shader_importer;
 // - update to newer version of wgpu
 // - maybe just switch to bevy
 // - +egui variables
+// - press a button to dump current wgsl files in a dir with a title from user
+//   and allow user to choose the from them easily
 const M: u32 = 1;
 const RENDER_WIDTH: u32 =  2560* M;
-const RENDER_HEIGHT: u32 = 1440 * M;
+const RENDER_HEIGHT: u32 = 1600 * M;
+const COMPUTE_BUFFER_STRUCT_SIZE: u32 = 2 + 2 + 2 + 1 + 1 + 1 + 1;
 
 struct State {
     surface: Option<wgpu::Surface>,
@@ -91,7 +94,7 @@ impl State {
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     limits: wgpu::Limits {
-                        max_storage_buffer_binding_size: 147456000,
+                        max_storage_buffer_binding_size: 4 * RENDER_HEIGHT * RENDER_WIDTH * COMPUTE_BUFFER_STRUCT_SIZE,
                         ..wgpu::Limits::default()
                     },
                     label: None,
@@ -337,7 +340,7 @@ impl State {
             label: Some(&format!("Compute Buffer")),
             contents: bytemuck::cast_slice(&vec![
                 0u32;
-                ((RENDER_HEIGHT) * RENDER_WIDTH * (2 + 2 + 2 + 1 + 1 + 1 + 1))
+                ((RENDER_HEIGHT) * RENDER_WIDTH * (COMPUTE_BUFFER_STRUCT_SIZE))
                     as usize
             ]),
             usage: wgpu::BufferUsages::VERTEX
