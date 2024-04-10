@@ -46,14 +46,12 @@ const force_use_escape_func_b = false;
 
 const mouse_sample_size = 2.0;
 const mouse_sample_r_theta = true;
-const scale_factor = 4.5;
-// const look_offset = v2f(-0.25, 0.0);
-// const scale_factor = 1.0;
-const look_offset = v2f(0.15, 0.0);
 
 // const e_to_ix = false;
 const e_to_ix = true;
-const e_to_ix_pow = -2.0;
+const e_to_ix_pow = 2.0;
+const scale_factor = 2.0;
+const look_offset = v2f(-0.25, 0.0);
 
 const anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
 const julia = false;
