@@ -348,15 +348,15 @@ fn main_fragment(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
 
     let compute_buffer_size = 2560u*1440u;
 
-    // reset active trajectories by pressing mouse middle click
-    if (stuff.mouse_middle == 1u && index < compute_buffer_size) {
-        // buf.buf[index] = 0u;
-        reset_ele_at(index);
+    if (stuff.mouse_right == 1u && index < compute_buffer_size) {
+        buf.buf[index] = 0u;
+        // reset active trajectories by pressing mouse middle click
+        // reset_ele_at(index);
     }
 
     // show trajectory buffer
     let i2 = u32(pos.x)+u32(pos.y)*stuff.display_width;
-    if (stuff.mouse_right == 1u && i2 < compute_buffer_size && compute_buffer.buff[i2].iter > min_iterations) {
+    if (stuff.mouse_middle == 1u && i2 < compute_buffer_size && compute_buffer.buff[i2].iter > min_iterations) {
         return v4f(0.8);
     }
 
