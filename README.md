@@ -1,6 +1,8 @@
 # fracgen_gpu
 generating fractals on gpu
 
+# watch me [explore fractals](https://youtu.be/O-gqcA2lAnU?si=n_5NimEDxY2lKcHO) on YouTube
+
 # some fractals generated using fracgen_gpu
 ![](./images/image1647545479.jpeg "rooty mandlebrot")
 ![](./images/image1647548300.jpeg "mandlebrot seahorse valley")
