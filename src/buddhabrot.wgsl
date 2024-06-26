@@ -3,6 +3,59 @@
 /// import ./src/vertex.wgsl
 /// import ./src/rng.wgsl
 
+fn conplex_div(a: v2f, b: v2f) -> v2f {
+    let d = dot(b,b);
+    return v2f( dot(a,b), a.y*b.x - a.x*b.y ) / d;
+}
+
+fn complex_mul(a: v2f, b: v2f) -> v2f {
+    return v2f( a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+}
+
+fn sdf_point(_z: v2f) -> f32 {
+    let z = _z - v2f(0.0, 0.0);
+    return sqrt(dot(z, z));
+}
+
+fn sdf_line(z: v2f, len: f32) -> f32 {
+    let p1 = v2f(len, 0.0);
+    let p2 = v2f(-len, 0.0);
+    let dir = normalize(p2 - p1);
+    
+    let h = min(1.0, max(0.0, dot(dir, z - p1)/length(p1-p2))); //from 0.0 to 1.0 wich point is closer p1 or p2
+    let d = length((z-p1)-h*(p2-p1));
+    return d;
+}
+
+fn sdf_ninja_star(_z: v2f) -> f32 {
+    let z = _z - v2f(4.0);
+    let r = sqrt(length(z));
+    let a = atan2(z.y, z.x);
+    return r - 1.0 + sin(3.0*a+2.0*r*r)/2.0;
+}
+
+fn sdf_ninja_star_non_smooth(z: v2f) -> f32 {
+    let h = v2f(0.001, 0.0);
+    let d = sdf_ninja_star(z);
+    let grad = v2f(
+        sdf_ninja_star(z+h) - sdf_ninja_star(z-h),
+        sdf_ninja_star(z+h.yx) - sdf_ninja_star(z-h.yx),
+    )/(2.0*h.x);
+    let de = abs(d)/length(grad);
+    let e = 0.2;
+    return smoothstep(1.0*e, 2.0*e, de);
+}
+
+fn sdf_sin(z: v2f) -> f32 {
+    var s = 0.0;
+    if (abs(z.y) < 5.0) {
+        s = abs(sin(z.x - 200.0));
+    } else {
+        s = 1.0;
+    }
+    return s;
+}
+
 struct TrajectoryPoint {
     z: v2f,
     c: v2f,
@@ -49,8 +102,8 @@ const mouse_sample_r_theta = true;
 
 // const e_to_ix = false;
 const e_to_ix = true;
-const e_to_ix_pow = 2.0;
-const scale_factor = 2.0;
+const e_to_ix_pow = -2.0;
+const scale_factor = 3.0;
 const look_offset = v2f(-0.25, 0.0);
 
 const anti = false; // !needs super low iteration count (both max_iteration and max_iter_per_frame)
@@ -99,17 +152,49 @@ fn f(z: v2f, c: v2f) -> v2f {
     }
 }
 
+fn sdf(_z: v2f) -> f32 {
+    var z = _z;
+    // z = z.yx;
+    z = z * 10.1;
+    // z = z + v2f(0.0, 10.0);
+    // z = z * v2f(0.1, 1.0);
+
+    var d = 0.0;
+    d = sdf_point(z);
+    d += - 1.0;
+    d = pow(d, 2.0);
+    var e = min(sdf_line(z.yx, 5.0), sdf_line(z, 5.0)) - 0.01;
+    e = pow(e, 1.5);
+    e = abs(e);
+    d = min(d, e) - 0.1;
+    var s = sdf_ninja_star(z + 4.0 + v2f(0.0, 5.0)) - 0.01;
+    d = min(s, d);
+
+    // d = sdf_line(z);
+    // d = min(sdf_point(z), sdf_line(z));
+    // d = sdf_ninja_star(z);
+    // d = sdf_ninja_star_non_smooth(z);
+    // d = sdf_sin(z);
+
+    d = d * 10.1;
+    d = 1.0/d;
+
+    return d;
+}
+
 fn escape_func_m(z: v2f) -> bool {
     // return z.x*z.x + z.y*z.y > 4.0;
-    return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
+    // return 0.02/z.x + z.y*z.y > 4.0; // make wierd root things
     // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
     // return 0.01/z.x - z.y*z.y > 4.0; // root things go smaller
+    // return 0.01/(z.x * z.y) > 4.0;
+    return sdf(z) > 4.0;
 }
 
 // OOF: why is this here again??
 fn escape_func_b(z: v2f) -> bool {
-    return escape_func_m(z);
-    // return z.x*z.x + z.y*z.y > 4.0;
+    // return escape_func_m(z);
+    return z.x*z.x + z.y*z.y > 4.0;
     // return 0.2/z.x + z.y*z.y > 4.0; // make wierd root things
     // return 1.0/z.x - z.y*z.y > 4.0; // turns the background black
     // return 0.2/z.x - z.x*z.x > 4.0; // root things go smaller
